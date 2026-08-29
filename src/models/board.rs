@@ -1,3 +1,5 @@
+use std::array;
+
 use crate::models::{direction::Direction, position::Position, tile::Tile};
 
 const BOARD_SIZE: usize = 3;
@@ -8,6 +10,12 @@ pub struct Board {
 }
 
 impl Board {
+    pub fn new() -> Self {
+        Self {
+            tiles: array::from_fn(|_| array::from_fn(|_| Tile::Empty)),
+        }
+    }
+
     pub fn get(&self, pos: Position) -> Option<&Tile> {
         let row_opt = self.tiles.get(pos.row);
         if let Some(row) = row_opt {

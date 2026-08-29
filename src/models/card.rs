@@ -7,6 +7,7 @@ use crate::models::{
 
 #[derive(PartialEq, Eq)]
 pub struct Card {
+    pub id: usize,
     pub name: String,
     pub directions: u8,
     pub attack: u8,
@@ -17,6 +18,7 @@ pub struct Card {
 
 impl Card {
     pub fn new(
+        id: usize,
         name: String,
         directions: u8,
         attack: u8,
@@ -25,6 +27,7 @@ impl Card {
         attack_type: AttackType,
     ) -> Self {
         Self {
+            id,
             name,
             directions,
             attack,
