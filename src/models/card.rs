@@ -1,8 +1,11 @@
+use std::fmt::Display;
+
 use crate::models::{
     attack_type::AttackType,
     direction::Direction::{self},
 };
 
+#[derive(PartialEq, Eq)]
 pub struct Card {
     pub name: String,
     pub directions: u8,
@@ -53,5 +56,24 @@ impl Card {
         let idx = *direction as u8;
         let mask: u8 = 1 << idx;
         return self.directions & mask > 0;
+    }
+
+    fn stats(&self) -> String {
+        format!(
+            "{:X}{}{:X}{:X}",
+            self.attack, self.attack_type, self.phys_defense, self.mag_defense
+        )
+    }
+}
+
+impl Display for Card {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{} | {} | {:#X}",
+            self.name,
+            self.stats(),
+            self.directions
+        )
     }
 }

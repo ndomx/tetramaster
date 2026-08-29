@@ -1,5 +1,16 @@
+use crate::models::card::Card;
+
 mod models;
 
 fn main() {
-    println!("Hello, world!");
+    let card = Card::new(
+        String::from("Flan"),
+        0x67,
+        5,
+        3,
+        10,
+        models::attack_type::AttackType::Physical,
+    );
+
+    println!("{}", card);
 }
