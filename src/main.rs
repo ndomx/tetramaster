@@ -1,12 +1,16 @@
-use crate::{assets::cards::FLAN, models::card::Card};
+use rand::seq::IndexedRandom;
+
+use crate::{assets::cards::CARDS, models::card::Card};
 
 mod assets;
 mod models;
 
 fn main() {
-    let card = Card::new(
-        &FLAN,
-    );
+    let mut rng = rand::rng();
 
-    println!("{}", card);
+    let cards = CARDS.sample(&mut rng, 5);
+    cards.for_each(|c| {
+        let card = Card::new(c);
+        println!("{}", card);
+    });
 }
