@@ -5,8 +5,6 @@ mod models;
 
 fn main() {
     let card = Card::new(
-        87,
-        0x67,
         &FLAN,
     );
 

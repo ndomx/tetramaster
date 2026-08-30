@@ -1,5 +1,7 @@
 use std::fmt::Display;
 
+use rand::random;
+
 use crate::models::{
     card_asset::CardAsset,
     direction::Direction::{self},
@@ -7,16 +9,19 @@ use crate::models::{
 
 #[derive(PartialEq, Eq)]
 pub struct Card {
-    pub id: usize,
-    pub directions: u8,
+    pub id: u64,
+    pub arrows: u8,
     pub asset: &'static CardAsset,
 }
 
 impl Card {
-    pub fn new(id: usize, directions: u8, asset: &'static CardAsset) -> Self {
+    pub fn new(asset: &'static CardAsset) -> Self {
+        let arrows = random();
+        let id = random();
+
         Self {
             id,
-            directions,
+            arrows,
             asset,
         }
     }
@@ -25,7 +30,7 @@ impl Card {
         return (0..8)
             .map(|offset| {
                 let mask: u8 = 1 << offset;
-                if self.directions & mask == 0 {
+                if self.arrows & mask == 0 {
                     return None;
                 }
 
@@ -42,13 +47,13 @@ impl Card {
     pub fn is_facing(&self, direction: &Direction) -> bool {
         let idx = *direction as u8;
         let mask: u8 = 1 << idx;
-        return self.directions & mask > 0;
+        return self.arrows & mask > 0;
     }
 
     fn stats(&self) -> String {
-        let atk = self.asset.attack >> 8;
-        let phd = self.asset.phys_defense >> 8;
-        let mgd = self.asset.mag_defense >> 8;
+        let atk = self.asset.attack >> 4;
+        let phd = self.asset.phys_defense >> 4;
+        let mgd = self.asset.mag_defense >> 4;
 
         format!("{:X}{}{:X}{:X}", atk, self.asset.battle_class, phd, mgd)
     }
@@ -61,7 +66,7 @@ impl Display for Card {
             "{} | {} | {:#X}",
             self.asset.name,
             self.stats(),
-            self.directions
+            self.arrows
         )
     }
 }
