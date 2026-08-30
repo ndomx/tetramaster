@@ -10,9 +10,18 @@ pub struct Board {
 }
 
 impl Board {
-    pub fn new() -> Self {
+    pub fn build(density: u8) -> Self {
         Self {
-            tiles: array::from_fn(|_| array::from_fn(|_| Tile::Empty)),
+            tiles: array::from_fn(|_| {
+                array::from_fn(|_| {
+                    let x: u8 = rand::random();
+                    if x > density {
+                        return Tile::Empty;
+                    }
+
+                    Tile::Block
+                })
+            }),
         }
     }
 

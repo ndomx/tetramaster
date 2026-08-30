@@ -1,7 +1,7 @@
 use std::fmt::Display;
 
 use crate::models::{
-    attack_type::AttackType,
+    battle_class::BattleClass,
     direction::Direction::{self},
 };
 
@@ -13,7 +13,7 @@ pub struct Card {
     pub attack: u8,
     pub phys_defense: u8,
     pub mag_defense: u8,
-    pub attack_type: AttackType,
+    pub battle_class: BattleClass,
 }
 
 impl Card {
@@ -24,7 +24,7 @@ impl Card {
         attack: u8,
         phys_defense: u8,
         mag_defense: u8,
-        attack_type: AttackType,
+        battle_class: BattleClass,
     ) -> Self {
         Self {
             id,
@@ -33,7 +33,7 @@ impl Card {
             attack,
             phys_defense,
             mag_defense,
-            attack_type,
+            battle_class,
         }
     }
 
@@ -62,10 +62,11 @@ impl Card {
     }
 
     fn stats(&self) -> String {
-        format!(
-            "{:X}{}{:X}{:X}",
-            self.attack, self.attack_type, self.phys_defense, self.mag_defense
-        )
+        let atk = self.attack >> 8;
+        let phd = self.phys_defense >> 8;
+        let mgd = self.mag_defense >> 8;
+
+        format!("{:X}{}{:X}{:X}", atk, self.battle_class, phd, mgd)
     }
 }
 

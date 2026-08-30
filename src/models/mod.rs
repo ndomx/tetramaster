@@ -1,8 +1,9 @@
-pub mod attack_type;
+pub mod battle_class;
 pub mod board;
 pub mod card;
 pub mod direction;
+pub mod game;
+pub mod played_card;
+pub mod player;
 pub mod position;
 pub mod tile;
-pub mod player;
-pub mod played_card;
