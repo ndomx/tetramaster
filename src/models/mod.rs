@@ -1,6 +1,7 @@
 pub mod battle_class;
 pub mod board;
 pub mod card;
+pub mod card_asset;
 pub mod direction;
 pub mod game;
 pub mod played_card;

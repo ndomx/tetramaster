@@ -1,42 +1,23 @@
 use std::fmt::Display;
 
 use crate::models::{
-    battle_class::BattleClass,
+    card_asset::CardAsset,
     direction::Direction::{self},
 };
 
 #[derive(PartialEq, Eq)]
 pub struct Card {
     pub id: usize,
-    pub index: usize,
-    pub name: String,
     pub directions: u8,
-    pub attack: u8,
-    pub phys_defense: u8,
-    pub mag_defense: u8,
-    pub battle_class: BattleClass,
+    pub asset: &'static CardAsset,
 }
 
 impl Card {
-    pub fn new(
-        id: usize,
-        index: usize,
-        name: String,
-        directions: u8,
-        attack: u8,
-        phys_defense: u8,
-        mag_defense: u8,
-        battle_class: BattleClass,
-    ) -> Self {
+    pub fn new(id: usize, directions: u8, asset: &'static CardAsset) -> Self {
         Self {
             id,
-            index,
-            name,
             directions,
-            attack,
-            phys_defense,
-            mag_defense,
-            battle_class,
+            asset,
         }
     }
 
@@ -65,11 +46,11 @@ impl Card {
     }
 
     fn stats(&self) -> String {
-        let atk = self.attack >> 8;
-        let phd = self.phys_defense >> 8;
-        let mgd = self.mag_defense >> 8;
+        let atk = self.asset.attack >> 8;
+        let phd = self.asset.phys_defense >> 8;
+        let mgd = self.asset.mag_defense >> 8;
 
-        format!("{:X}{}{:X}{:X}", atk, self.battle_class, phd, mgd)
+        format!("{:X}{}{:X}{:X}", atk, self.asset.battle_class, phd, mgd)
     }
 }
 
@@ -78,7 +59,7 @@ impl Display for Card {
         write!(
             f,
             "{} | {} | {:#X}",
-            self.name,
+            self.asset.name,
             self.stats(),
             self.directions
         )
