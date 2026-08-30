@@ -1,16 +1,11 @@
-use rand::seq::IndexedRandom;
-
-use crate::{assets::cards::CARDS, models::card::Card};
+use crate::models::game::Game;
 
 mod assets;
+mod constants;
 mod models;
 
 fn main() {
     let mut rng = rand::rng();
 
-    let cards = CARDS.sample(&mut rng, 5);
-    cards.for_each(|c| {
-        let card = Card::new(c);
-        println!("{}", card);
-    });
+    let _ = Game::new(0.65, &mut rng);
 }

@@ -1,25 +1,20 @@
 use std::array;
 
-use crate::models::{direction::Direction, position::Position, tile::Tile};
+use rand::{RngExt, rngs::ThreadRng};
 
-const BOARD_SIZE: usize = 3;
-const TILE_TOTAL: usize = BOARD_SIZE * BOARD_SIZE;
+use crate::{constants::BOARD_SIZE, models::{direction::Direction, position::Position, tile::Tile}};
 
 pub struct Board {
     tiles: [[Tile; BOARD_SIZE]; BOARD_SIZE],
 }
 
 impl Board {
-    pub fn build(density: u8) -> Self {
+    pub fn build(density: f64, rng: &mut ThreadRng) -> Self {
         Self {
             tiles: array::from_fn(|_| {
-                array::from_fn(|_| {
-                    let x: u8 = rand::random();
-                    if x > density {
-                        return Tile::Empty;
-                    }
-
-                    Tile::Block
+                array::from_fn(|_| match rng.random_bool(density) {
+                    true => Tile::Block,
+                    false => Tile::Empty,
                 })
             }),
         }
