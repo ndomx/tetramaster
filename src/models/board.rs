@@ -2,31 +2,35 @@ use std::array;
 
 use rand::{RngExt, rngs::ThreadRng};
 
-use crate::{constants::BOARD_SIZE, models::{direction::Direction, position::Position, tile::Tile}};
+use crate::{
+    models::{
+        card::Card, direction::Direction, played_card::PlayedCard, position::Position, tile::Tile,
+    },
+    utils::{
+        constants::{BOARD_SIZE, TILE_TOTAL},
+        helpers::{idx2pos, pos2idx},
+    },
+};
 
 pub struct Board {
-    tiles: [[Tile; BOARD_SIZE]; BOARD_SIZE],
+    tiles: [Tile; TILE_TOTAL],
+    played_cards: Vec<Card>,
 }
 
 impl Board {
     pub fn build(density: f64, rng: &mut ThreadRng) -> Self {
         Self {
-            tiles: array::from_fn(|_| {
-                array::from_fn(|_| match rng.random_bool(density) {
-                    true => Tile::Block,
-                    false => Tile::Empty,
-                })
+            tiles: array::from_fn(|_| match rng.random_bool(density) {
+                true => Tile::Block,
+                false => Tile::Empty,
             }),
+            played_cards: vec![],
         }
     }
 
     pub fn get(&self, pos: Position) -> Option<&Tile> {
-        let row_opt = self.tiles.get(pos.row);
-        if let Some(row) = row_opt {
-            return row.get(pos.col);
-        }
-
-        None
+        let idx = pos2idx(pos);
+        idx.and_then(|i| self.tiles.get(i))
     }
 
     pub fn get_relative(&self, pos: Position, dir: &Direction) -> Option<&Tile> {
@@ -41,7 +45,60 @@ impl Board {
         next.and_then(|p| self.get(p))
     }
 
-    fn is_available(&self, pos: Position) -> bool {
+    pub fn neighboring_enemies(
+        &self,
+        pos: Position,
+        dirs: Vec<Direction>,
+        player_id: u64,
+    ) -> Vec<&Card> {
+        dirs.iter()
+            .filter_map(|dir| self.get_relative(pos, dir))
+            .filter_map(|tile| match tile {
+                Tile::Card(played) => Some(played),
+                _ => None,
+            })
+            .filter(|played| played.owner_id != player_id)
+            .filter_map(|played| self.find_card(played.card_id))
+            .collect()
+    }
+
+    pub fn place_card(&mut self, card_id: u64, target: Position, owner_id: u64) -> Result<(), ()> {
+        if !self.is_available(target) {
+            return Err(());
+        }
+
+        if let Some(idx) = pos2idx(target) {
+            self.tiles[idx] = Tile::Card(PlayedCard { owner_id, card_id });
+
+            return Ok(());
+        }
+
+        Err(())
+    }
+
+    pub fn count_available(&self) -> usize {
+        self.tiles
+            .iter()
+            .filter(|tile| tile == &&Tile::Empty)
+            .count()
+    }
+
+    pub fn is_available(&self, pos: Position) -> bool {
         self.get(pos) == Some(&Tile::Empty)
+    }
+
+    pub fn find_availables(&self) -> Vec<Position> {
+        self.tiles
+            .iter()
+            .enumerate()
+            .filter_map(|(idx, tile)| match tile {
+                &Tile::Empty => idx2pos(idx),
+                _ => None,
+            })
+            .collect()
+    }
+
+    fn find_card(&self, card_id: u64) -> Option<&Card> {
+        self.played_cards.iter().find(|c| c.id == card_id)
     }
 }

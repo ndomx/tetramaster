@@ -19,28 +19,22 @@ impl Card {
         let arrows = random();
         let id = random();
 
-        Self {
-            id,
-            arrows,
-            asset,
-        }
+        Self { id, arrows, asset }
     }
 
     pub fn facing(&self) -> Vec<Direction> {
         return (0..8)
-            .map(|offset| {
+            .filter_map(|offset| {
                 let mask: u8 = 1 << offset;
                 if self.arrows & mask == 0 {
                     return None;
                 }
 
-                return match Direction::try_from(offset) {
+                match Direction::try_from(offset) {
                     Ok(value) => Some(value),
                     _ => None,
-                };
+                }
             })
-            .filter(|dir_opt| dir_opt.is_some())
-            .map(|dir_opt| dir_opt.unwrap())
             .collect();
     }
 

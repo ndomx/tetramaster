@@ -1,8 +1,8 @@
 use crate::models::game::Game;
 
 mod assets;
-mod constants;
 mod models;
+mod utils;
 
 fn main() {
     let mut rng = rand::rng();
