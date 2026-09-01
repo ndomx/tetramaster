@@ -1,4 +1,7 @@
-use crate::{assets::cards::CARDS, models::{card::Card, game::Game}, ui::ascii::{ascii_view::AsciiView, hand_card_view::HandCardView}};
+use crate::{
+    models::{card::Card, game::Game},
+    ui::ascii::{ascii_view::AsciiView, hand_card_view::HandCardView},
+};
 
 mod assets;
 mod models;
@@ -8,13 +11,23 @@ mod utils;
 fn main() {
     let mut rng = rand::rng();
 
-    let _ = Game::new(0.65, &mut rng);
+    let game = Game::new(0.65, &mut rng);
+    let hand = &game.players[0].hand;
+    render_hand(hand);
+}
 
-    let a = &CARDS[0];
-    let c = Card::new(a);
-    let renderer = HandCardView::new(&c);
+fn render_hand(hand: &Vec<Card>) {
+    let views: Vec<HandCardView<'_>> = hand.iter().map(|c| HandCardView::new(c)).collect();
+    let height = views
+        .first()
+        .and_then(|v| Some(v.height()))
+        .or(Some(0))
+        .unwrap();
 
-    for i in 0..renderer.height() {
-        println!("{}", renderer.line(i));
+    for line in 0..height {
+        views.iter().for_each(|v| {
+            print!("{} ", v.line(line));
+        });
+        println!();
     }
 }
