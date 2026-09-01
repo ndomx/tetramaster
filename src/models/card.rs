@@ -44,7 +44,7 @@ impl Card {
         return self.arrows & mask > 0;
     }
 
-    fn stats(&self) -> String {
+    pub fn stats(&self) -> String {
         let atk = self.asset.attack >> 4;
         let phd = self.asset.phys_defense >> 4;
         let mgd = self.asset.mag_defense >> 4;

@@ -32,6 +32,10 @@ impl Game {
         }
     }
 
+    pub fn is_players_turn(&self) -> bool {
+        self.playing_idx == 0
+    }
+
     fn build_player(is_cpu: bool, rng: &mut ThreadRng) -> Player {
         let id: u64 = rng.next_u64();
         let hand = Game::build_hand(rng);
