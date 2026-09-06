@@ -1,6 +1,6 @@
 use std::array;
 
-use rand::{RngExt, rngs::ThreadRng};
+use rand::{RngExt, rngs::ThreadRng, seq::IteratorRandom};
 
 use crate::{
     models::{
@@ -43,6 +43,16 @@ impl Board {
         );
 
         next.and_then(|p| self.get(p))
+    }
+
+    pub fn row(&self, row: usize) -> &[Tile] {
+        let lower = BOARD_SIZE * row;
+        let upper = lower + BOARD_SIZE;
+        self.tiles.get(lower..upper).unwrap_or_default()
+    }
+
+    pub fn played_card(&self, card_id: u64) -> Option<&Card> {
+        self.played_cards.iter().find(|c| c.id == card_id)
     }
 
     pub fn neighboring_enemies(
@@ -96,6 +106,17 @@ impl Board {
                 _ => None,
             })
             .collect()
+    }
+
+    pub fn find_available(&self, rng: &mut ThreadRng) -> Option<Position> {
+        self.tiles
+            .iter()
+            .enumerate()
+            .filter_map(|(idx, tile)| match tile {
+                Tile::Empty => idx2pos(idx),
+                _ => None,
+            })
+            .choose(rng)
     }
 
     fn find_card(&self, card_id: u64) -> Option<&Card> {

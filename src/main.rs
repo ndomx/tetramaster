@@ -1,6 +1,5 @@
 use crate::{
-    models::{card::Card, game::Game},
-    ui::ascii::{ascii_view::AsciiView, hand_card_view::HandCardView},
+    models::{board::Board, card::Card, game::Game, player::Player}, ui::ascii::{ascii_view::AsciiView, board_view::BoardView, hand_card_view::HandCardView},
 };
 
 mod assets;
@@ -14,6 +13,9 @@ fn main() {
     let game = Game::new(0.65, &mut rng);
     let hand = &game.players[0].hand;
     render_hand(hand);
+
+    let players = &game.players;
+    render_board(&game.board, players);
 }
 
 fn render_hand(hand: &Vec<Card>) {
@@ -29,5 +31,12 @@ fn render_hand(hand: &Vec<Card>) {
             print!("{} ", v.line(line));
         });
         println!();
+    }
+}
+
+fn render_board(board: &Board, players: &[Player]) {
+    let view = BoardView::new(board, players);
+    for line in 0..view.height() {
+        println!("{}", view.line(line));
     }
 }

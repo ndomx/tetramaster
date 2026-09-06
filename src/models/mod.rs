@@ -4,6 +4,7 @@ pub mod card;
 pub mod card_asset;
 pub mod direction;
 pub mod game;
+pub mod game_command;
 pub mod played_card;
 pub mod player;
 pub mod position;

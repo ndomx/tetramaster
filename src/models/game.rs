@@ -4,18 +4,26 @@ use rand::{Rng, RngExt, rngs::ThreadRng, seq::IndexedRandom};
 
 use crate::{
     assets::cards::CARDS,
-    models::{board::Board, card::Card, player::Player, position::Position, tile::Tile},
+    models::{
+        board::Board,
+        card::Card,
+        game_command::{GameState, GameTurnInput, GameTurnOutput},
+        player::Player,
+        position::Position,
+    },
     utils::constants::{MAX_HAND_CARDS, PLAYER_COUNT},
 };
 
-pub struct Game {
+pub struct Game<'a> {
     pub board: Board,
     pub players: [Player; PLAYER_COUNT],
     playing_idx: usize,
+    rng: &'a mut ThreadRng,
+    state: GameState,
 }
 
-impl Game {
-    pub fn new(block_density: f64, rng: &mut ThreadRng) -> Self {
+impl<'a> Game<'a> {
+    pub fn new(block_density: f64, rng: &'a mut ThreadRng) -> Self {
         let board = Board::build(block_density, rng);
 
         let players: [Player; 2] = array::from_fn(|i| {
@@ -29,6 +37,18 @@ impl Game {
             board,
             players,
             playing_idx,
+            rng,
+            state: GameState::NotStarted,
+        }
+    }
+
+    pub fn run(&mut self, input: GameTurnInput) -> GameTurnOutput {
+        match self.state {
+            GameState::NotStarted => self.start_game(input),
+            GameState::CpuTurnStart => self.start_cpu_turn(input),
+            GameState::CpuTurnEnd => self.end_cpu_turn(input),
+            GameState::PlayerTurnStart => self.start_player_turn(input),
+            GameState::PlayerTurnEnd => self.end_player_turn(input),
         }
     }
 
@@ -39,8 +59,12 @@ impl Game {
     fn build_player(is_cpu: bool, rng: &mut ThreadRng) -> Player {
         let id: u64 = rng.next_u64();
         let hand = Game::build_hand(rng);
+        let name = match is_cpu {
+            true => "CPU".to_string(),
+            false => "Player".to_string()
+        };
 
-        Player { id, is_cpu, hand }
+        Player { id, name, hand }
     }
 
     fn build_hand(rng: &mut ThreadRng) -> Vec<Card> {
@@ -56,21 +80,64 @@ impl Game {
         }
 
         let player = &mut self.players[self.playing_idx];
-
-        let card_opt = player.pop_card(card_id);
-        if card_opt.is_none() {
+        let Some(card) = player.pop_card(card_id) else {
             return Err(());
-        }
+        };
 
-        let card = card_opt.unwrap();
         self.board.place_card(card.id, target, player.id)?;
 
-        let neighbouring_enemies = self
-            .board
-            .neighboring_enemies(target, card.facing(), player.id);
+        let _neighbouring_enemies =
+            self.board
+                .neighboring_enemies(target, card.facing(), player.id);
 
         // attack
 
         Ok(())
+    }
+
+    fn bot_turn(&mut self) -> Result<(), ()> {
+        let Some(target) = self.board.find_available(self.rng) else {
+            return Err(());
+        };
+
+        let player = &mut self.players[self.playing_idx];
+        let Some(card) = player.hand.choose(self.rng) else {
+            return Err(());
+        };
+
+        self.board.place_card(card.id, target, player.id)?;
+
+        let _neighbouring_enemies =
+            self.board
+                .neighboring_enemies(target, card.facing(), player.id);
+
+        // attack
+
+        Ok(())
+    }
+
+    fn start_game(&mut self, _input: GameTurnInput) -> GameTurnOutput {
+        self.state = match self.playing_idx {
+            0 => GameState::PlayerTurnStart,
+            _ => GameState::CpuTurnStart,
+        };
+
+        GameTurnOutput::RenderBoard
+    }
+
+    fn start_cpu_turn(&mut self, input: GameTurnInput) -> GameTurnOutput {
+        todo!()
+    }
+
+    fn end_cpu_turn(&mut self, input: GameTurnInput) -> GameTurnOutput {
+        todo!()
+    }
+
+    fn start_player_turn(&mut self, input: GameTurnInput) -> GameTurnOutput {
+        todo!()
+    }
+
+    fn end_player_turn(&mut self, input: GameTurnInput) -> GameTurnOutput {
+        todo!()
     }
 }
