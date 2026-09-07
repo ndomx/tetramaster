@@ -12,6 +12,7 @@ use crate::{
         position::Position,
     },
     utils::constants::{MAX_HAND_CARDS, PLAYER_COUNT},
+    utils::random::VecRandomExt,
 };
 
 pub struct Game<'a> {
@@ -42,6 +43,21 @@ impl<'a> Game<'a> {
         }
     }
 
+    pub fn place_card(&mut self) {
+        let player = &mut self.players[0];
+        let owner_id = player.id;
+
+        let Some(card) = player.remove() else {
+            return;
+        };
+
+        let card_id = card.id;
+
+        if let Some(target) = self.board.find_available(self.rng) {
+            let _ = self.board.place_card(card, target, owner_id);
+        }
+    }
+
     pub fn run(&mut self, input: GameTurnInput) -> GameTurnOutput {
         match self.state {
             GameState::NotStarted => self.start_game(input),
@@ -61,7 +77,7 @@ impl<'a> Game<'a> {
         let hand = Game::build_hand(rng);
         let name = match is_cpu {
             true => "CPU".to_string(),
-            false => "Player".to_string()
+            false => "Player".to_string(),
         };
 
         Player { id, name, hand }
@@ -84,11 +100,11 @@ impl<'a> Game<'a> {
             return Err(());
         };
 
-        self.board.place_card(card.id, target, player.id)?;
+        self.board.place_card(card, target, player.id)?;
 
-        let _neighbouring_enemies =
-            self.board
-                .neighboring_enemies(target, card.facing(), player.id);
+        // let _neighbouring_enemies =
+        //     self.board
+        //         .neighboring_enemies(target, card.facing(), player.id);
 
         // attack
 
@@ -101,15 +117,15 @@ impl<'a> Game<'a> {
         };
 
         let player = &mut self.players[self.playing_idx];
-        let Some(card) = player.hand.choose(self.rng) else {
+        let Some(card) = player.hand.take_random(self.rng) else {
             return Err(());
         };
 
-        self.board.place_card(card.id, target, player.id)?;
+        self.board.place_card(card, target, player.id)?;
 
-        let _neighbouring_enemies =
-            self.board
-                .neighboring_enemies(target, card.facing(), player.id);
+        // let _neighbouring_enemies =
+        //     self.board
+        //         .neighboring_enemies(target, card.facing(), player.id);
 
         // attack
 

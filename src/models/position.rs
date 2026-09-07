@@ -1,6 +1,6 @@
 use crate::models::direction::Direction;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct Position {
     pub row: usize,
     pub col: usize,

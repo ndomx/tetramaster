@@ -1,5 +1,6 @@
 use crate::{
-    models::{board::Board, card::Card, game::Game, player::Player}, ui::ascii::{ascii_view::AsciiView, board_view::BoardView, hand_card_view::HandCardView},
+    models::{board::Board, card::Card, game::Game, player::Player, position::Position},
+    ui::ascii::{ascii_view::AsciiView, board_view::BoardView, hand_card_view::HandCardView},
 };
 
 mod assets;
@@ -10,10 +11,14 @@ mod utils;
 fn main() {
     let mut rng = rand::rng();
 
-    let game = Game::new(0.65, &mut rng);
+    let mut game = Game::new(0.25, &mut rng);
     let hand = &game.players[0].hand;
     render_hand(hand);
 
+    // let players = &game.players;
+    // render_board(&game.board, players);
+    
+    game.place_card();
     let players = &game.players;
     render_board(&game.board, players);
 }

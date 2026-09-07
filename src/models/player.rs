@@ -15,4 +15,12 @@ impl Player {
     pub fn push_card(&mut self, card: Card) {
         self.hand.push(card);
     }
+
+    pub fn remove(&mut self) -> Option<Card> {
+        if self.hand.len() == 0 {
+            return None;
+        }
+
+        Some(self.hand.remove(0))
+    }
 }

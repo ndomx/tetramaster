@@ -52,7 +52,9 @@ impl Board {
     }
 
     pub fn played_card(&self, card_id: u64) -> Option<&Card> {
-        self.played_cards.iter().find(|c| c.id == card_id)
+        self.played_cards.iter().find(|c| {
+            return c.id == card_id;
+        })
     }
 
     pub fn neighboring_enemies(
@@ -72,18 +74,19 @@ impl Board {
             .collect()
     }
 
-    pub fn place_card(&mut self, card_id: u64, target: Position, owner_id: u64) -> Result<(), ()> {
-        if !self.is_available(target) {
+    pub fn place_card(&mut self, card: Card, target: Position, owner_id: u64) -> Result<(), ()> {
+        let Some(idx) = pos2idx(target) else {
             return Err(());
-        }
+        };
 
-        if let Some(idx) = pos2idx(target) {
-            self.tiles[idx] = Tile::Card(PlayedCard { owner_id, card_id });
+        self.tiles[idx] = Tile::Card(PlayedCard {
+            owner_id,
+            card_id: card.id,
+        });
 
-            return Ok(());
-        }
+        self.played_cards.push(card);
 
-        Err(())
+        Ok(())
     }
 
     pub fn count_available(&self) -> usize {

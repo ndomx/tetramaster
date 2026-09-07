@@ -39,7 +39,7 @@ impl<'a> BoardView<'a> {
         let player = self
             .players
             .iter()
-            .find(|p| p.id == played_card.card_id)
+            .find(|p| p.id == played_card.owner_id)
             .unwrap();
 
         let card = self.board.played_card(played_card.card_id).unwrap();
