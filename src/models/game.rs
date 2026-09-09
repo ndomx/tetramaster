@@ -3,16 +3,9 @@ use std::array;
 use rand::{Rng, RngExt, rngs::ThreadRng, seq::IndexedRandom};
 
 use crate::{
-    assets::cards::CARDS,
-    models::{
-        board::Board,
-        card::Card,
-        game_command::{GameState, GameTurnInput, GameTurnOutput},
-        player::Player,
-        position::Position,
-    },
-    utils::constants::{MAX_HAND_CARDS, PLAYER_COUNT},
-    utils::random::VecRandomExt,
+    assets::cards::CARDS, models::{
+        board::Board, card::Card, game_command::{GameState, GameTurnInput, GameTurnOutput}, player::Player, position::Position,
+    }, utils::{constants::{MAX_HAND_CARDS, PLAYER_COUNT}, random::VecRandomExt},
 };
 
 pub struct Game<'a> {
@@ -43,19 +36,8 @@ impl<'a> Game<'a> {
         }
     }
 
-    pub fn place_card(&mut self) {
-        let player = &mut self.players[0];
-        let owner_id = player.id;
-
-        let Some(card) = player.remove() else {
-            return;
-        };
-
-        let card_id = card.id;
-
-        if let Some(target) = self.board.find_available(self.rng) {
-            let _ = self.board.place_card(card, target, owner_id);
-        }
+    pub fn player_hand(&self) -> &Vec<Card> {
+        return &self.players[0].hand;
     }
 
     pub fn run(&mut self, input: GameTurnInput) -> GameTurnOutput {
@@ -68,9 +50,6 @@ impl<'a> Game<'a> {
         }
     }
 
-    pub fn is_players_turn(&self) -> bool {
-        self.playing_idx == 0
-    }
 
     fn build_player(is_cpu: bool, rng: &mut ThreadRng) -> Player {
         let id: u64 = rng.next_u64();
@@ -141,16 +120,28 @@ impl<'a> Game<'a> {
         GameTurnOutput::RenderBoard
     }
 
-    fn start_cpu_turn(&mut self, input: GameTurnInput) -> GameTurnOutput {
-        todo!()
+    fn start_cpu_turn(&mut self, _input: GameTurnInput) -> GameTurnOutput {
+        self.bot_turn().ok();
+        self.state = GameState::CpuTurnEnd;
+
+        GameTurnOutput::RenderBoard
     }
 
     fn end_cpu_turn(&mut self, input: GameTurnInput) -> GameTurnOutput {
-        todo!()
+        self.state = GameState::PlayerTurnStart;
+        self.playing_idx = 0;
+
+        GameTurnOutput::SelectPosition
     }
 
     fn start_player_turn(&mut self, input: GameTurnInput) -> GameTurnOutput {
-        todo!()
+        match input {
+            GameTurnInput::Continue => GameTurnOutput::SelectPosition,
+            GameTurnInput::PlaceCard { card_id, target } => {
+                self.handle_turn(card_id, target).ok();
+                GameTurnOutput::RenderBoard
+            },
+        }
     }
 
     fn end_player_turn(&mut self, input: GameTurnInput) -> GameTurnOutput {
