@@ -1,23 +1,21 @@
 use crate::{
-    models::{board::Board, played_card::PlayedCard, player::Player, tile::Tile},
-    ui::ascii::{
+    models::{board::Board, played_card::PlayedCard, player::Player, tile::Tile}, ui::ascii::{
         ascii_view::AsciiView,
         constants::{CARD_HEIGHT, CARD_WIDTH},
         tile_block_view::TileBlockView,
         tile_card_view::TileCardView,
         tile_empty_view::TileEmptyView,
         tile_view::TileView,
-    },
-    utils::constants::BOARD_SIZE,
+    }, utils::constants::{BOARD_SIZE, PLAYER_COUNT},
 };
 
 pub struct BoardView<'a> {
     board: &'a Board,
-    players: &'a [Player],
+    players: [&'a Player; 2],
 }
 
 impl<'a> BoardView<'a> {
-    pub fn new(board: &'a Board, players: &'a [Player]) -> Self {
+    pub fn new(board: &'a Board, players: [&'a Player; PLAYER_COUNT]) -> Self {
         Self { board, players }
     }
 

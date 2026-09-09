@@ -21,17 +21,16 @@ mod utils;
 
 fn main() {
     let mut rng = rand::rng();
-
     let mut game = Game::new(0.25, &mut rng);
 
     let mut game_input = GameTurnInput::Continue;
-    let mut game_output = GameTurnOutput::RenderHand;
     loop {
-        game_output = game.run(game_input);
+        let game_output = game.run(game_input);
         game_input = match game_output {
             GameTurnOutput::RenderBoard => on_render_board(&game),
             GameTurnOutput::RenderHand => on_render_hand(&game),
             GameTurnOutput::SelectPosition => on_select_card(&game),
+            GameTurnOutput::Continue => GameTurnInput::Continue,
         };
     }
 }
@@ -58,7 +57,7 @@ fn on_select_card(game: &Game) -> GameTurnInput {
     let idx: usize = parse_input(|&v| v < hand.len());
     let card = &hand[idx];
 
-    println!("selected {}", card.name());
+    println!("selected {} ({})", card.name(), card.id);
 
     let row: usize = parse_input(|&v| v < BOARD_SIZE);
     let col: usize = parse_input(|&v| v < BOARD_SIZE);
@@ -87,7 +86,7 @@ fn render_hand(hand: &Vec<Card>) {
 }
 
 fn render_board(game: &Game) {
-    let view = BoardView::new(&game.board, &game.players);
+    let view = BoardView::new(&game.board, [&game.player, &game.cpu]);
 
     println!("Board");
     for line in 0..view.height() {

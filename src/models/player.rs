@@ -9,18 +9,9 @@ pub struct Player {
 
 impl Player {
     pub fn pop_card(&mut self, card_id: u64) -> Option<Card> {
-        self.hand.pop_if(|card| card.id == card_id)
-    }
-
-    pub fn push_card(&mut self, card: Card) {
-        self.hand.push(card);
-    }
-
-    pub fn remove(&mut self) -> Option<Card> {
-        if self.hand.len() == 0 {
-            return None;
-        }
-
-        Some(self.hand.remove(0))
+        self.hand
+            .iter()
+            .position(|c| c.id == card_id)
+            .and_then(|idx| Some(self.hand.remove(idx)))
     }
 }

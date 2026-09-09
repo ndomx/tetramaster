@@ -3,7 +3,8 @@ use crate::models::position::Position;
 pub enum GameTurnOutput {
     RenderBoard,
     RenderHand,
-    SelectPosition
+    SelectPosition,
+    Continue,
 }
 
 pub enum GameState {

@@ -74,9 +74,10 @@ impl Board {
             .collect()
     }
 
-    pub fn place_card(&mut self, card: Card, target: Position, owner_id: u64) -> Result<(), ()> {
+    pub fn place_card(&mut self, card: Card, target: Position, owner_id: u64) -> Result<(), String> {
         let Some(idx) = pos2idx(target) else {
-            return Err(());
+            let message = format!("invalid position ({},{})", target.row, target.col);
+            return Err(message);
         };
 
         self.tiles[idx] = Tile::Card(PlayedCard {
