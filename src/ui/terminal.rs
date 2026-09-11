@@ -1,4 +1,7 @@
-use std::io::{self, Stdout};
+use std::{
+    io::{self, Stdout, Write},
+    str::FromStr,
+};
 
 use crossterm::{
     cursor::MoveTo,
@@ -7,8 +10,9 @@ use crossterm::{
 };
 
 use crate::{
-    models::{card::Card, game::Game},
+    models::{action::Action, card::Card, game::Game, position::Position},
     ui::ascii::{ascii_view::AsciiView, board_view::BoardView, hand_card_view::HandCardView},
+    utils::constants::BOARD_SIZE,
 };
 
 pub struct Terminal {
@@ -35,6 +39,22 @@ impl Terminal {
         Ok(())
     }
 
+    pub fn read_action(&mut self, game: &Game) -> io::Result<Action> {
+        let hand = game.player_hand();
+
+        self.prompt("select a card to play: ")?;
+        let idx: usize = self.parse_input(|&v| v < hand.len())?;
+        let card = &hand[idx];
+
+        self.prompt("select a row to play card: ")?;
+        let row: usize = self.parse_input(|&v| v < BOARD_SIZE)?;
+
+        self.prompt("select a col to play card: ")?;
+        let col: usize = self.parse_input(|&v| v < BOARD_SIZE)?;
+
+        Ok(Action::new(card.id, Position::new(row, col)))
+    }
+
     fn clear(&mut self) -> io::Result<()> {
         execute!(&mut self.stdout, Clear(ClearType::All), MoveTo(0, 0))
     }
@@ -55,5 +75,32 @@ impl Terminal {
         }
 
         Ok(())
+    }
+
+    fn prompt(&mut self, message: &str) -> io::Result<()> {
+        print!("{}", message);
+        self.stdout.flush()
+    }
+
+    fn read_input(&self) -> io::Result<String> {
+        let mut input = String::new();
+
+        io::stdin()
+            .read_line(&mut input)
+            .map_err(|_| io::Error::new(io::ErrorKind::Other, "Failed to read input"))?;
+
+        Ok(input.trim().to_string())
+    }
+
+    fn parse_input<T: FromStr>(&self, validator: impl Fn(&T) -> bool) -> io::Result<T> {
+        return loop {
+            let input = self.read_input()?;
+            let Some(parsed) = input.parse::<T>().ok().filter(|v| validator(v)) else {
+                println!("invalid choice!");
+                continue;
+            };
+
+            break Ok(parsed);
+        };
     }
 }

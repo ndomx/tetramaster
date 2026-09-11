@@ -2,18 +2,11 @@ use rand::{Rng, RngExt, rngs::ThreadRng, seq::IndexedRandom};
 
 use crate::{
     assets::cards::CARDS,
-    models::{
-        board::Board,
-        card::Card,
-        game_command::{GameState, GameTurnInput, GameTurnOutput},
-        player::Player,
-        position::Position,
-    },
-    utils::{
-        constants::{MAX_HAND_CARDS},
-        random::VecRandomExt,
-    },
+    models::{action::Action, board::Board, card::Card, game_command::GameState, player::Player},
+    utils::{constants::MAX_HAND_CARDS, random::VecRandomExt},
 };
+
+type TurnResult = Result<(), String>;
 
 pub struct Game<'a> {
     pub board: Board,
@@ -43,14 +36,24 @@ impl<'a> Game<'a> {
         return &self.player.hand;
     }
 
-    pub fn run(&mut self, input: GameTurnInput) -> GameTurnOutput {
-        match self.state {
-            GameState::NotStarted => self.start_game(input),
-            GameState::CpuTurnStart => self.start_cpu_turn(input),
-            GameState::CpuTurnEnd => self.end_cpu_turn(input),
-            GameState::PlayerTurnStart => self.start_player_turn(input),
-            GameState::PlayerTurnEnd => self.end_player_turn(input),
+    pub fn run(&mut self) -> TurnResult {
+        while self.state != GameState::PlayerTurnStart {
+            match self.state {
+                GameState::NotStarted => self.start_game(),
+                GameState::CpuTurnStart => self.start_cpu_turn(),
+                GameState::CpuTurnEnd => self.end_cpu_turn(),
+                GameState::PlayerTurnEnd => self.end_player_turn(),
+                GameState::PlayerTurnStart => Ok(()),
+            }?;
         }
+
+        Ok(())
+    }
+
+    pub fn play_card(&mut self, action: Action) -> TurnResult {
+        self.handle_turn(action)?;
+        self.state = GameState::PlayerTurnEnd;
+        Ok(())
     }
 
     fn build_player(is_cpu: bool, rng: &mut ThreadRng) -> Player {
@@ -71,17 +74,17 @@ impl<'a> Game<'a> {
             .collect()
     }
 
-    fn handle_turn(&mut self, card_id: u64, target: Position) -> Result<(), String> {
-        if !self.board.is_available(target) {
+    fn handle_turn(&mut self, action: Action) -> TurnResult {
+        if !self.board.is_available(action.target) {
             return Err("position is not available".to_string());
         }
 
         let player = &mut self.player;
-        let Some(card) = player.pop_card(card_id) else {
+        let Some(card) = player.pop_card(action.card_id) else {
             return Err("card id not found".to_string());
         };
 
-        self.board.place_card(card, target, player.id)?;
+        self.board.place_card(card, action.target, player.id)?;
 
         // let _neighbouring_enemies =
         //     self.board
@@ -92,7 +95,7 @@ impl<'a> Game<'a> {
         Ok(())
     }
 
-    fn bot_turn(&mut self) -> Result<(), String> {
+    fn bot_turn(&mut self) -> TurnResult {
         let Some(target) = self.board.find_available(self.rng) else {
             return Err("unable to find a position".to_string());
         };
@@ -113,44 +116,30 @@ impl<'a> Game<'a> {
         Ok(())
     }
 
-    fn start_game(&mut self, _input: GameTurnInput) -> GameTurnOutput {
+    fn start_game(&mut self) -> TurnResult {
         self.state = match self.rng.random_bool(0.5) {
             true => GameState::PlayerTurnStart,
             false => GameState::CpuTurnStart,
         };
 
-        GameTurnOutput::RenderBoard
+        Ok(())
     }
 
-    fn start_cpu_turn(&mut self, _input: GameTurnInput) -> GameTurnOutput {
+    fn start_cpu_turn(&mut self) -> TurnResult {
         self.bot_turn().ok();
         self.state = GameState::CpuTurnEnd;
 
-        GameTurnOutput::RenderBoard
+        Ok(())
     }
 
-    fn end_cpu_turn(&mut self, _input: GameTurnInput) -> GameTurnOutput {
+    fn end_cpu_turn(&mut self) -> TurnResult {
         self.state = GameState::PlayerTurnStart;
 
-        GameTurnOutput::SelectPosition
+        Ok(())
     }
 
-    fn start_player_turn(&mut self, input: GameTurnInput) -> GameTurnOutput {
-        let GameTurnInput::PlaceCard { card_id, target } = input else {
-            return GameTurnOutput::SelectPosition;
-        };
-
-        let res = self.handle_turn(card_id, target);
-        if res.is_err() {
-            return GameTurnOutput::SelectPosition;
-        }
-
-        self.state = GameState::PlayerTurnEnd;
-        GameTurnOutput::RenderBoard
-    }
-
-    fn end_player_turn(&mut self, _input: GameTurnInput) -> GameTurnOutput {
+    fn end_player_turn(&mut self) -> TurnResult {
         self.state = GameState::CpuTurnStart;
-        GameTurnOutput::Continue
+        Ok(())
     }
 }
