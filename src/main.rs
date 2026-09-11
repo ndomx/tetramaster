@@ -1,6 +1,9 @@
 use std::io::stdout;
 
-use crate::{models::game::Game, ui::terminal::Terminal};
+use crate::{
+    models::{game::Game, game_state::GameState::AwaitingPlayer},
+    ui::terminal::Terminal,
+};
 
 mod assets;
 mod models;
@@ -16,9 +19,15 @@ fn main() {
     loop {
         terminal.render(&game).ok();
 
-        game.run().ok();
+        if game.state == AwaitingPlayer {
+            let action = terminal.read_action(&game).unwrap();
+            game.play_card(action).ok();
 
-        let action = terminal.read_action(&game).unwrap();
-        game.play_card(action).ok();
+            continue;
+        }
+
+        if let Err(e) = game.run() {
+            println!("Error! {}", e);
+        }
     }
 }

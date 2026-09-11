@@ -2,7 +2,7 @@ use rand::{Rng, RngExt, rngs::ThreadRng, seq::IndexedRandom};
 
 use crate::{
     assets::cards::CARDS,
-    models::{action::Action, board::Board, card::Card, game_command::GameState, player::Player},
+    models::{action::Action, board::Board, card::Card, game_state::GameState, player::Player},
     utils::{constants::MAX_HAND_CARDS, random::VecRandomExt},
 };
 
@@ -12,8 +12,8 @@ pub struct Game<'a> {
     pub board: Board,
     pub player: Player,
     pub cpu: Player,
+    pub state: GameState,
     rng: &'a mut ThreadRng,
-    state: GameState,
 }
 
 impl<'a> Game<'a> {
@@ -37,22 +37,27 @@ impl<'a> Game<'a> {
     }
 
     pub fn run(&mut self) -> TurnResult {
-        while self.state != GameState::PlayerTurnStart {
-            match self.state {
-                GameState::NotStarted => self.start_game(),
-                GameState::CpuTurnStart => self.start_cpu_turn(),
-                GameState::CpuTurnEnd => self.end_cpu_turn(),
-                GameState::PlayerTurnEnd => self.end_player_turn(),
-                GameState::PlayerTurnStart => Ok(()),
-            }?;
+        match self.state {
+            GameState::NotStarted => self.start_game(),
+            GameState::CpuTurn => self.cpu_turn(),
+            _ => Ok(()),
         }
-
-        Ok(())
     }
 
     pub fn play_card(&mut self, action: Action) -> TurnResult {
         self.handle_turn(action)?;
-        self.state = GameState::PlayerTurnEnd;
+        self.end_turn()
+    }
+
+    fn end_turn(&mut self) -> TurnResult {
+        // if game.finished
+
+        self.state = match self.state {
+            GameState::CpuTurn => Ok(GameState::AwaitingPlayer),
+            GameState::AwaitingPlayer => Ok(GameState::CpuTurn),
+            _ => Err(format!("Cannot end turn from state {:?}", self.state)),
+        }?;
+
         Ok(())
     }
 
@@ -95,7 +100,7 @@ impl<'a> Game<'a> {
         Ok(())
     }
 
-    fn bot_turn(&mut self) -> TurnResult {
+    fn cpu_turn(&mut self) -> TurnResult {
         let Some(target) = self.board.find_available(self.rng) else {
             return Err("unable to find a position".to_string());
         };
@@ -113,33 +118,15 @@ impl<'a> Game<'a> {
 
         // attack
 
-        Ok(())
+        self.end_turn()
     }
 
     fn start_game(&mut self) -> TurnResult {
         self.state = match self.rng.random_bool(0.5) {
-            true => GameState::PlayerTurnStart,
-            false => GameState::CpuTurnStart,
+            true => GameState::AwaitingPlayer,
+            false => GameState::CpuTurn,
         };
 
-        Ok(())
-    }
-
-    fn start_cpu_turn(&mut self) -> TurnResult {
-        self.bot_turn().ok();
-        self.state = GameState::CpuTurnEnd;
-
-        Ok(())
-    }
-
-    fn end_cpu_turn(&mut self) -> TurnResult {
-        self.state = GameState::PlayerTurnStart;
-
-        Ok(())
-    }
-
-    fn end_player_turn(&mut self) -> TurnResult {
-        self.state = GameState::CpuTurnStart;
         Ok(())
     }
 }
