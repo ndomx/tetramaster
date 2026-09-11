@@ -1,6 +1,5 @@
 use std::{
-    io::{self, Write},
-    str::FromStr,
+    io::{self, Write, stdout}, str::FromStr,
 };
 
 use crate::{
@@ -9,9 +8,7 @@ use crate::{
         game::Game,
         game_command::{GameTurnInput, GameTurnOutput},
         position::Position,
-    },
-    ui::ascii::{ascii_view::AsciiView, board_view::BoardView, hand_card_view::HandCardView},
-    utils::constants::BOARD_SIZE,
+    }, ui::{ascii::{ascii_view::AsciiView, board_view::BoardView, hand_card_view::HandCardView}, terminal::Terminal}, utils::constants::BOARD_SIZE,
 };
 
 mod assets;
@@ -50,8 +47,8 @@ fn on_render_board(game: &Game) -> GameTurnInput {
 fn on_select_card(game: &Game) -> GameTurnInput {
     let hand = game.player_hand();
 
-    render_board(game);
-    render_hand(hand);
+    let mut terminal = Terminal::new(stdout());
+    terminal.render(game).ok();
 
     prompt("Select card: ");
     let idx: usize = parse_input(|&v| v < hand.len());
