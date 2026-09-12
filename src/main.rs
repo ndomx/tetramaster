@@ -1,4 +1,4 @@
-use std::io::stdout;
+use std::{io::stdout, thread::sleep, time::Duration};
 
 use crate::{
     models::{game::Game, game_state::GameState::AwaitingPlayer},
@@ -17,6 +17,7 @@ fn main() {
     let mut terminal = Terminal::new(stdout());
 
     loop {
+        sleep(Duration::from_millis(250));
         terminal.render(&game).ok();
 
         if game.state == AwaitingPlayer {
