@@ -1,4 +1,5 @@
 pub mod action;
+pub mod active_player;
 pub mod battle_class;
 pub mod board;
 pub mod card;

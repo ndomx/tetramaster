@@ -2,7 +2,10 @@ use rand::{Rng, RngExt, rngs::ThreadRng, seq::IndexedRandom};
 
 use crate::{
     assets::cards::CARDS,
-    models::{action::Action, board::Board, card::Card, game_state::GameState, player::Player},
+    models::{
+        action::Action, active_player::ActivePlayer, board::Board, card::Card,
+        game_state::GameState, player::Player,
+    },
     utils::{constants::MAX_HAND_CARDS, random::VecRandomExt},
 };
 
@@ -13,6 +16,7 @@ pub struct Game<'a> {
     pub player: Player,
     pub cpu: Player,
     pub state: GameState,
+    pub active_player: ActivePlayer,
     rng: &'a mut ThreadRng,
 }
 
@@ -29,6 +33,7 @@ impl<'a> Game<'a> {
             cpu,
             rng,
             state: GameState::NotStarted,
+            active_player: ActivePlayer::None,
         }
     }
 
@@ -39,24 +44,50 @@ impl<'a> Game<'a> {
     pub fn run(&mut self) -> TurnResult {
         match self.state {
             GameState::NotStarted => self.start_game(),
-            GameState::CpuTurn => self.cpu_turn(),
+            GameState::StartTurn => self.start_turn(),
+            GameState::ApplyEffects => self.apply_effects(),
+            GameState::EndTurn => self.end_turn(),
             _ => Ok(()),
         }
     }
 
     pub fn play_card(&mut self, action: Action) -> TurnResult {
-        self.handle_turn(action)?;
-        self.end_turn()
+        self.player_turn(action)?;
+
+        self.state = GameState::ApplyEffects;
+        Ok(())
+    }
+
+    pub fn awaiting_input(&self) -> bool {
+        self.state == GameState::StartTurn && self.active_player == ActivePlayer::Player
+    }
+
+    fn start_turn(&mut self) -> TurnResult {
+        if self.active_player != ActivePlayer::Cpu {
+            return Err("Active player should be CPU".to_string());
+        }
+
+        self.cpu_turn()?;
+
+        self.state = GameState::ApplyEffects;
+        Ok(())
+    }
+
+    fn apply_effects(&mut self) -> TurnResult {
+        self.state = GameState::EndTurn;
+        Ok(())
     }
 
     fn end_turn(&mut self) -> TurnResult {
         // if game.finished
 
-        self.state = match self.state {
-            GameState::CpuTurn => Ok(GameState::AwaitingPlayer),
-            GameState::AwaitingPlayer => Ok(GameState::CpuTurn),
-            _ => Err(format!("Cannot end turn from state {:?}", self.state)),
-        }?;
+        self.active_player = match self.active_player {
+            ActivePlayer::Cpu => ActivePlayer::Player,
+            ActivePlayer::Player => ActivePlayer::Cpu,
+            _ => return Err("Invalid active player".to_string()),
+        };
+
+        self.state = GameState::StartTurn;
 
         Ok(())
     }
@@ -79,7 +110,7 @@ impl<'a> Game<'a> {
             .collect()
     }
 
-    fn handle_turn(&mut self, action: Action) -> TurnResult {
+    fn player_turn(&mut self, action: Action) -> TurnResult {
         if !self.board.is_available(action.target) {
             return Err("position is not available".to_string());
         }
@@ -90,12 +121,6 @@ impl<'a> Game<'a> {
         };
 
         self.board.place_card(card, action.target, player.id)?;
-
-        // let _neighbouring_enemies =
-        //     self.board
-        //         .neighboring_enemies(target, card.facing(), player.id);
-
-        // attack
 
         Ok(())
     }
@@ -110,22 +135,16 @@ impl<'a> Game<'a> {
             return Err("unable to draw a card from cpu".to_string());
         };
 
-        self.board.place_card(card, target, cpu.id)?;
-
-        // let _neighbouring_enemies =
-        //     self.board
-        //         .neighboring_enemies(target, card.facing(), player.id);
-
-        // attack
-
-        self.end_turn()
+        self.board.place_card(card, target, cpu.id)
     }
 
     fn start_game(&mut self) -> TurnResult {
-        self.state = match self.rng.random_bool(0.5) {
-            true => GameState::AwaitingPlayer,
-            false => GameState::CpuTurn,
+        self.active_player = match self.rng.random_bool(0.5) {
+            true => ActivePlayer::Player,
+            false => ActivePlayer::Cpu,
         };
+
+        self.state = GameState::StartTurn;
 
         Ok(())
     }

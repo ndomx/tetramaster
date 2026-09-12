@@ -4,7 +4,11 @@ use rand::{RngExt, rngs::ThreadRng, seq::IteratorRandom};
 
 use crate::{
     models::{
-        card::Card, direction::Direction, played_card::PlayedCard, position::Position, tile::Tile,
+        card::Card,
+        direction::Direction,
+        played_card::PlayedCard,
+        position::Position,
+        tile::{self, Tile},
     },
     utils::{
         constants::{BOARD_SIZE, TILE_TOTAL},
@@ -33,6 +37,20 @@ impl Board {
         idx.and_then(|i| self.tiles.get(i))
     }
 
+    pub fn get_card(&self, pos: Position) -> Option<&Card> {
+        pos2idx(pos)
+            .and_then(|idx| self.tiles.get(idx))
+            .and_then(|tile| match tile {
+                Tile::Card(played) => Some(played.card_id),
+                _ => None,
+            })
+            .and_then(|card_id| self.find_card(card_id))
+    }
+
+    pub fn last_played(&self) -> Option<&Card> {
+        self.played_cards.last()
+    }
+
     pub fn get_relative(&self, pos: Position, dir: &Direction) -> Option<&Tile> {
         let next = pos.relative(
             dir,
@@ -57,6 +75,16 @@ impl Board {
         })
     }
 
+    pub fn facing_cards(&self, pos: Position, dirs: Vec<Direction>) -> Vec<&PlayedCard> {
+        dirs.iter()
+            .filter_map(|dir| self.get_relative(pos, dir))
+            .filter_map(|tile| match tile {
+                Tile::Card(played) => Some(played),
+                _ => None,
+            })
+            .collect()
+    }
+
     pub fn neighboring_enemies(
         &self,
         pos: Position,
@@ -74,7 +102,12 @@ impl Board {
             .collect()
     }
 
-    pub fn place_card(&mut self, card: Card, target: Position, owner_id: u64) -> Result<(), String> {
+    pub fn place_card(
+        &mut self,
+        card: Card,
+        target: Position,
+        owner_id: u64,
+    ) -> Result<(), String> {
         let Some(idx) = pos2idx(target) else {
             let message = format!("invalid position ({},{})", target.row, target.col);
             return Err(message);
