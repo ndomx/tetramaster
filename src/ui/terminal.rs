@@ -31,7 +31,7 @@ impl Terminal {
         let player = &game.player;
         let cpu = &game.cpu;
 
-        let board_view = BoardView::new(board, [player, cpu]);
+        let board_view = BoardView::new(board, player, cpu);
 
         board_view.render()?;
         self.render_hand(&player.hand)?;

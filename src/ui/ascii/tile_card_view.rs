@@ -1,18 +1,23 @@
+use crossterm::style::{Color, Stylize};
+
 use crate::{
-    models::{card::Card, direction::Direction}, ui::ascii::{
+    models::{card::Card, direction::Direction},
+    ui::ascii::{
         ascii_view::AsciiView,
         constants::{CARD_HEIGHT, CARD_WIDTH},
     },
 };
 
+const FRONT_COLOR: Color = Color::Yellow;
+
 pub struct TileCardView<'a> {
     card: &'a Card,
-    owner: &'a str,
+    back_color: Color,
 }
 
 impl<'a> TileCardView<'a> {
-    pub fn new(card: &'a Card, owner: &'a str) -> Self {
-        Self { card, owner }
+    pub fn new(card: &'a Card, back_color: Color) -> Self {
+        Self { card, back_color }
     }
 
     fn top_line(&self) -> String {
@@ -28,7 +33,7 @@ impl<'a> TileCardView<'a> {
         });
 
         let width = self.width();
-        format!("│{northwest}{north:^width$}{northeast}│")
+        format!("│{}{:^width$}{}│", northwest, north, northeast)
     }
 
     fn mid_line(&self) -> String {
@@ -60,6 +65,10 @@ impl<'a> TileCardView<'a> {
         let width = self.width();
         format!("│{southwest}{south:^width$}{southeast}│")
     }
+
+    fn stats_line(&self) -> String {
+        format!("│ {:^CARD_WIDTH$} │", (self.card.asset.name))
+    }
 }
 
 impl<'a> AsciiView for TileCardView<'a> {
@@ -71,17 +80,17 @@ impl<'a> AsciiView for TileCardView<'a> {
         CARD_HEIGHT
     }
 
-     fn line(&self, line: usize) -> String {
+    fn line(&self, line: usize) -> String {
         match line {
             0 => "┌─────────────┐".to_string(),
             1 => self.top_line(),
             2 => "│             │".to_string(),
-            3 => format!("│ {:^CARD_WIDTH$} │", self.card.asset.name),
+            3 => self.stats_line(),
             4 => self.mid_line(),
-            5 => format!("│ {:^CARD_WIDTH$} │", self.owner),
+            5 => "│             │".to_string(),
             6 => "│             │".to_string(),
             7 => self.bottom_line(),
             _ => "└─────────────┘".to_string(),
-        }
+        }.on(self.back_color).with(FRONT_COLOR).to_string()
     }
 }

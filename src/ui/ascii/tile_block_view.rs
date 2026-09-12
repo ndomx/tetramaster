@@ -1,3 +1,5 @@
+use crossterm::style::{Color, Stylize};
+
 use crate::{
     ui::ascii::{
         ascii_view::AsciiView,
@@ -18,15 +20,15 @@ impl AsciiView for TileBlockView {
 
     fn line(&self, line: usize) -> String {
         match line {
-            0 => "┌─────────────┐".to_string(),
-            1 => "│x x x x x x x│".to_string(),
-            2 => "│ x x x x x x │".to_string(),
-            3 => "│x x x x x x x│".to_string(),
-            4 => "│ x x x x x x │".to_string(),
-            5 => "│x x x x x x x│".to_string(),
-            6 => "│ x x x x x x │".to_string(),
-            7 => "│x x x x x x x│".to_string(),
-            _ => "└─────────────┘".to_string(),
+            0 => "┌─────────────┐".on(Color::Grey).to_string(),
+            1 => "│             │".on(Color::Grey).to_string(),
+            2 => "│             │".on(Color::Grey).to_string(),
+            3 => "│             │".on(Color::Grey).to_string(),
+            4 => "│             │".on(Color::Grey).to_string(),
+            5 => "│             │".on(Color::Grey).to_string(),
+            6 => "│             │".on(Color::Grey).to_string(),
+            7 => "│             │".on(Color::Grey).to_string(),
+            _ => "└─────────────┘".on(Color::Grey).to_string(),
         }
     }
 }

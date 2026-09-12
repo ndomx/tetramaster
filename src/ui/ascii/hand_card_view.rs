@@ -1,3 +1,5 @@
+use crossterm::style::Stylize;
+
 use crate::{
     models::{card::Card, direction::Direction},
     ui::ascii::{
@@ -82,6 +84,6 @@ impl<'a> AsciiView for HandCardView<'a> {
             6 => "│             │".to_string(),
             7 => self.bottom_line(),
             _ => "└─────────────┘".to_string(),
-        }
+        }.on_blue().to_string()
     }
 }

@@ -1,22 +1,27 @@
+use crossterm::style::Color;
+
 use crate::{
-    models::{board::Board, played_card::PlayedCard, player::Player, tile::Tile}, ui::ascii::{
+    models::{board::Board, played_card::PlayedCard, player::Player, tile::Tile},
+    ui::ascii::{
         ascii_view::AsciiView,
         constants::{CARD_HEIGHT, CARD_WIDTH},
         tile_block_view::TileBlockView,
         tile_card_view::TileCardView,
         tile_empty_view::TileEmptyView,
         tile_view::TileView,
-    }, utils::constants::{BOARD_SIZE, PLAYER_COUNT},
+    },
+    utils::constants::BOARD_SIZE,
 };
 
 pub struct BoardView<'a> {
     board: &'a Board,
-    players: [&'a Player; 2],
+    player: &'a Player,
+    cpu: &'a Player,
 }
 
 impl<'a> BoardView<'a> {
-    pub fn new(board: &'a Board, players: [&'a Player; PLAYER_COUNT]) -> Self {
-        Self { board, players }
+    pub fn new(board: &'a Board, player: &'a Player, cpu: &'a Player) -> Self {
+        Self { board, player, cpu }
     }
 
     fn row_tiles(&self, line: usize) -> Vec<TileView<'a>> {
@@ -34,15 +39,14 @@ impl<'a> BoardView<'a> {
     }
 
     fn build_card_view(&self, played_card: &PlayedCard) -> TileCardView<'a> {
-        let player = self
-            .players
-            .iter()
-            .find(|p| p.id == played_card.owner_id)
-            .unwrap();
-
         let card = self.board.played_card(played_card.card_id).unwrap();
+        let color = if played_card.owner_id == self.player.id {
+            Color::Blue
+        } else {
+            Color::Red
+        };
 
-        TileCardView::new(card, &player.name)
+        TileCardView::new(card, color)
     }
 }
 
