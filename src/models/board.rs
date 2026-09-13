@@ -4,12 +4,10 @@ use rand::{RngExt, rngs::ThreadRng, seq::IteratorRandom};
 
 use crate::{
     models::{
-        card::Card,
-        direction::Direction,
-        played_card::PlayedCard,
-        position::Position,
-        tile::{self, Tile},
+        card::Card, direction::Direction, placed_card::PlacedCard, position::Position, tile::Tile,
+        tile_card::TileCard,
     },
+    ui::ascii::tile_empty_view,
     utils::{
         constants::{BOARD_SIZE, TILE_TOTAL},
         helpers::{idx2pos, pos2idx},
@@ -18,7 +16,7 @@ use crate::{
 
 pub struct Board {
     tiles: [Tile; TILE_TOTAL],
-    played_cards: Vec<Card>,
+    placed_cards: Vec<PlacedCard>,
 }
 
 impl Board {
@@ -28,7 +26,7 @@ impl Board {
                 true => Tile::Block,
                 false => Tile::Empty,
             }),
-            played_cards: vec![],
+            placed_cards: vec![],
         }
     }
 
@@ -44,11 +42,12 @@ impl Board {
                 Tile::Card(played) => Some(played.card_id),
                 _ => None,
             })
-            .and_then(|card_id| self.find_card(card_id))
+            .and_then(|card_id| self.find_placed(card_id))
+            .map(|pc| &pc.card)
     }
 
-    pub fn last_played(&self) -> Option<&Card> {
-        self.played_cards.last()
+    pub fn last_played(&self) -> Option<&PlacedCard> {
+        self.placed_cards.last()
     }
 
     pub fn get_relative(&self, pos: Position, dir: &Direction) -> Option<&Tile> {
@@ -69,13 +68,13 @@ impl Board {
         self.tiles.get(lower..upper).unwrap_or_default()
     }
 
-    pub fn played_card(&self, card_id: u64) -> Option<&Card> {
-        self.played_cards.iter().find(|c| {
-            return c.id == card_id;
+    pub fn find_placed(&self, card_id: u64) -> Option<&PlacedCard> {
+        self.placed_cards.iter().find(|pc| {
+            return pc.card.id == card_id;
         })
     }
 
-    pub fn facing_cards(&self, pos: Position, dirs: Vec<Direction>) -> Vec<&PlayedCard> {
+    pub fn facing_cards(&self, pos: Position, dirs: Vec<Direction>) -> Vec<&TileCard> {
         dirs.iter()
             .filter_map(|dir| self.get_relative(pos, dir))
             .filter_map(|tile| match tile {
@@ -89,17 +88,21 @@ impl Board {
         &self,
         pos: Position,
         dirs: Vec<Direction>,
-        player_id: u64,
-    ) -> Vec<&Card> {
-        dirs.iter()
+    ) -> Result<Vec<&PlacedCard>, String> {
+        let owner_id = self.tile_owner(pos)?;
+
+        let cards = dirs
+            .iter()
             .filter_map(|dir| self.get_relative(pos, dir))
             .filter_map(|tile| match tile {
                 Tile::Card(played) => Some(played),
                 _ => None,
             })
-            .filter(|played| played.owner_id != player_id)
-            .filter_map(|played| self.find_card(played.card_id))
-            .collect()
+            .filter(|played| played.owner_id != owner_id)
+            .filter_map(|played| self.find_placed(played.card_id))
+            .collect();
+
+        Ok(cards)
     }
 
     pub fn place_card(
@@ -109,16 +112,15 @@ impl Board {
         owner_id: u64,
     ) -> Result<(), String> {
         let Some(idx) = pos2idx(target) else {
-            let message = format!("invalid position ({},{})", target.row, target.col);
-            return Err(message);
+            return Err(format!("invalid position {:?}", target));
         };
 
-        self.tiles[idx] = Tile::Card(PlayedCard {
+        self.tiles[idx] = Tile::Card(TileCard {
             owner_id,
             card_id: card.id,
         });
 
-        self.played_cards.push(card);
+        self.placed_cards.push(PlacedCard::new(card, target));
 
         Ok(())
     }
@@ -156,7 +158,32 @@ impl Board {
             .choose(rng)
     }
 
-    fn find_card(&self, card_id: u64) -> Option<&Card> {
-        self.played_cards.iter().find(|c| c.id == card_id)
+    pub fn swap_owner(&mut self, pos: Position, owner_id: u64) -> Result<&Card, String> {
+        let Some(idx) = pos2idx(pos) else {
+            return Err(format!("invalid pos {:?}", pos));
+        };
+
+        let card_id = self
+            .tiles
+            .get(idx)
+            .and_then(|t| match t {
+                Tile::Card(tc) => Some(tc.card_id),
+                _ => None,
+            })
+            .ok_or("Tile is not a card".to_string())?;
+
+        self.tiles[idx] = Tile::Card(TileCard { owner_id, card_id });
+        self.find_placed(card_id)
+            .map(|pc| &pc.card)
+            .ok_or("Unable to find card".to_string())
+    }
+
+    pub fn tile_owner(&self, pos: Position) -> Result<u64, String> {
+        self.get(pos)
+            .and_then(|t| match t {
+                Tile::Card(tile_card) => Some(tile_card.owner_id),
+                _ => None,
+            })
+            .ok_or("Invalid position or tile".to_string())
     }
 }

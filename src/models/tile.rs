@@ -1,8 +1,8 @@
-use crate::models::{played_card::PlayedCard};
+use crate::models::{tile_card::TileCard};
 
 #[derive(PartialEq, Eq)]
 pub enum Tile {
     Empty,
     Block,
-    Card(PlayedCard),
+    Card(TileCard),
 }

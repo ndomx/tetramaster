@@ -1,7 +1,7 @@
 use crossterm::style::Color;
 
 use crate::{
-    models::{board::Board, played_card::PlayedCard, player::Player, tile::Tile},
+    models::{board::Board, player::Player, tile::Tile, tile_card::TileCard},
     ui::ascii::{
         ascii_view::AsciiView,
         constants::{CARD_HEIGHT, CARD_WIDTH},
@@ -38,15 +38,15 @@ impl<'a> BoardView<'a> {
             .collect()
     }
 
-    fn build_card_view(&self, played_card: &PlayedCard) -> TileCardView<'a> {
-        let card = self.board.played_card(played_card.card_id).unwrap();
+    fn build_card_view(&self, played_card: &TileCard) -> TileCardView<'a> {
+        let pc = self.board.find_placed(played_card.card_id).unwrap();
         let color = if played_card.owner_id == self.player.id {
             Color::Blue
         } else {
             Color::Red
         };
 
-        TileCardView::new(card, color)
+        TileCardView::new(&pc.card, color)
     }
 }
 

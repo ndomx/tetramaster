@@ -1,12 +1,9 @@
 use rand::{Rng, RngExt, rngs::ThreadRng, seq::IndexedRandom};
 
 use crate::{
-    assets::cards::CARDS,
-    models::{
-        action::Action, active_player::ActivePlayer, board::Board, card::Card,
-        game_state::GameState, player::Player,
-    },
-    utils::{constants::MAX_HAND_CARDS, random::VecRandomExt},
+    assets::cards::CARDS, models::{
+        action::Action, active_player::ActivePlayer, board::Board, card::Card, direction::Direction, game_state::GameState, player::Player,
+    }, utils::{constants::MAX_HAND_CARDS, random::VecRandomExt},
 };
 
 type TurnResult = Result<(), String>;
@@ -74,6 +71,8 @@ impl<'a> Game<'a> {
     }
 
     fn apply_effects(&mut self) -> TurnResult {
+
+
         self.state = GameState::EndTurn;
         Ok(())
     }
@@ -148,4 +147,30 @@ impl<'a> Game<'a> {
 
         Ok(())
     }
+
+    fn get_active_player(&self) -> Result<&Player, String> {
+        match self.active_player {
+            ActivePlayer::Cpu => Ok(&self.cpu),
+            ActivePlayer::Player => Ok(&self.player),
+            _ => Err("Invalid active player".to_string()),
+        }
+    }
+
+    // fn attack(&mut self) -> TurnResult {
+    //     let Some(pc) = self.board.last_played() else {
+    //         return Err("Could not load last played card".to_string());
+    //     };
+
+    //     let owner_id = self.board.tile_owner(pc.pos)?;
+
+    //     let card = &pc.card;
+    //     let dirs = card.facing();
+
+    //     let enemies = self.board.neighboring_enemies(pc.pos, dirs)?;
+    //     for enemy in enemies {
+    //         self.board.swap_owner(enemy.pos, owner_id)?;
+    //     }
+
+    //     Ok(())
+    // }
 }
