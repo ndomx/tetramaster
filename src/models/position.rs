@@ -36,9 +36,9 @@ impl Position {
             return None;
         }
 
-        return Some(Self {
+        Some(Self {
             row: row as usize,
             col: col as usize,
-        });
+        })
     }
 }

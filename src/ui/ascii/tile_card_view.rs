@@ -25,10 +25,10 @@ impl<'a> TileCardView<'a> {
         let mut north = " ";
         let mut northeast = " ";
 
-        self.card.facing().iter().for_each(|d| match d {
-            &Direction::NW => northwest = "◤",
-            &Direction::N => north = "▲",
-            &Direction::NE => northeast = "◥",
+        self.card.facing().iter().for_each(|d| match *d {
+            Direction::NW => northwest = "◤",
+            Direction::N => north = "▲",
+            Direction::NE => northeast = "◥",
             _ => {}
         });
 
@@ -40,9 +40,9 @@ impl<'a> TileCardView<'a> {
         let mut west = " ";
         let mut east = " ";
 
-        self.card.facing().iter().for_each(|d| match d {
-            &Direction::W => west = "◀",
-            &Direction::E => east = "▶",
+        self.card.facing().iter().for_each(|d| match *d {
+            Direction::W => west = "◀",
+            Direction::E => east = "▶",
             _ => {}
         });
 
@@ -55,10 +55,10 @@ impl<'a> TileCardView<'a> {
         let mut south = " ";
         let mut southeast = " ";
 
-        self.card.facing().iter().for_each(|d| match d {
-            &Direction::SW => southwest = "◣",
-            &Direction::S => south = "▼",
-            &Direction::SE => southeast = "◢",
+        self.card.facing().iter().for_each(|d| match *d {
+            Direction::SW => southwest = "◣",
+            Direction::S => south = "▼",
+            Direction::SE => southeast = "◢",
             _ => {}
         });
 
@@ -91,6 +91,9 @@ impl<'a> AsciiView for TileCardView<'a> {
             6 => "│             │".to_string(),
             7 => self.bottom_line(),
             _ => "└─────────────┘".to_string(),
-        }.on(self.back_color).with(FRONT_COLOR).to_string()
+        }
+        .on(self.back_color)
+        .with(FRONT_COLOR)
+        .to_string()
     }
 }

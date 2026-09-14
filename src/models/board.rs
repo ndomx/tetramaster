@@ -31,7 +31,7 @@ impl Board {
         idx.and_then(|i| self.tiles.get(i))
     }
 
-    pub fn get_relative(&self, pos: Position, dir: &Direction) -> Option<TileCard> {
+    pub fn get_relative(&self, pos: Position, dir: &Direction) -> Option<&TileCard> {
         let next = pos.relative(
             dir,
             Position {
@@ -41,7 +41,7 @@ impl Board {
         );
 
         next.and_then(|p| self.get(p)).and_then(|t| match t {
-            Tile::Card(tc) => Some(tc.clone()),
+            Tile::Card(tc) => Some(tc),
             _ => None,
         })
     }

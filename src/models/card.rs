@@ -23,25 +23,23 @@ impl Card {
     }
 
     pub fn facing(&self) -> Vec<Direction> {
-        return (0..8)
+        (0..8)
             .filter_map(|offset| {
                 let mask: u8 = 1 << offset;
                 if self.arrows & mask == 0 {
                     return None;
                 }
 
-                match Direction::try_from(offset) {
-                    Ok(value) => Some(value),
-                    _ => None,
-                }
+                Direction::try_from(offset).ok()
             })
-            .collect();
+            .collect()
     }
 
     pub fn is_facing(&self, direction: &Direction) -> bool {
         let idx = *direction as u8;
         let mask: u8 = 1 << idx;
-        return self.arrows & mask > 0;
+
+        self.arrows & mask > 0
     }
 
     pub fn stats(&self) -> String {
@@ -53,7 +51,7 @@ impl Card {
     }
 
     pub fn name(&self) -> &str {
-        return &self.asset.name;
+        &self.asset.name
     }
 }
 

@@ -55,13 +55,9 @@ impl Terminal {
         execute!(&mut self.stdout, Clear(ClearType::All), MoveTo(0, 0))
     }
 
-    fn render_hand(&self, hand: &Vec<Card>) -> io::Result<()> {
-        let views: Vec<HandCardView<'_>> = hand.iter().map(|c| HandCardView::new(c)).collect();
-        let height = views
-            .first()
-            .and_then(|v| Some(v.height()))
-            .or(Some(0))
-            .unwrap();
+    fn render_hand(&self, hand: &[Card]) -> io::Result<()> {
+        let views: Vec<HandCardView<'_>> = hand.iter().map(HandCardView::new).collect();
+        let height = views.first().map(|v| v.height()).unwrap_or(0);
 
         for line in 0..height {
             views.iter().for_each(|v| {
@@ -83,13 +79,13 @@ impl Terminal {
 
         io::stdin()
             .read_line(&mut input)
-            .map_err(|_| io::Error::new(io::ErrorKind::Other, "Failed to read input"))?;
+            .map_err(|_| io::Error::other("Failed to read input"))?;
 
         Ok(input.trim().to_string())
     }
 
     fn parse_input<T: FromStr>(&self, validator: impl Fn(&T) -> bool) -> io::Result<T> {
-        return loop {
+        loop {
             let input = self.read_input()?;
             let Some(parsed) = input.parse::<T>().ok().filter(|v| validator(v)) else {
                 println!("invalid choice!");
@@ -97,6 +93,6 @@ impl Terminal {
             };
 
             break Ok(parsed);
-        };
+        }
     }
 }

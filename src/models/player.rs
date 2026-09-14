@@ -12,6 +12,6 @@ impl Player {
         self.hand
             .iter()
             .position(|c| c.id == card_id)
-            .and_then(|idx| Some(self.hand.remove(idx)))
+            .map(|idx| self.hand.remove(idx))
     }
 }

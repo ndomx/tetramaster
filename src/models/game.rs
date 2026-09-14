@@ -41,7 +41,7 @@ impl<'a> Game<'a> {
     }
 
     pub fn player_hand(&self) -> &Vec<Card> {
-        return &self.player.hand;
+        &self.player.hand
     }
 
     pub fn run(&mut self) -> TurnResult {
@@ -109,10 +109,7 @@ impl<'a> Game<'a> {
     }
 
     fn build_hand(rng: &mut ThreadRng) -> Vec<Card> {
-        CARDS
-            .sample(rng, MAX_HAND_CARDS)
-            .map(|asset| Card::new(asset))
-            .collect()
+        CARDS.sample(rng, MAX_HAND_CARDS).map(Card::new).collect()
     }
 
     fn player_turn(&mut self, action: Action) -> TurnResult {
@@ -171,9 +168,7 @@ impl<'a> Game<'a> {
     }
 
     pub fn find_placed(&self, card_id: u64) -> Option<&PlacedCard> {
-        self.placed_cards.iter().find(|pc| {
-            return pc.card.id == card_id;
-        })
+        self.placed_cards.iter().find(|pc| pc.card.id == card_id)
     }
 
     fn neighboring_enemies<'b>(
@@ -188,11 +183,7 @@ impl<'a> Game<'a> {
             .iter()
             .filter_map(|dir| self.board.get_relative(pos, dir))
             .filter(|tc| tc.owner_id != owner_id)
-            .filter_map(|tc| {
-                placed_cards.iter().find(|pc| {
-                    return pc.card.id == tc.card_id;
-                })
-            })
+            .filter_map(|tc| placed_cards.iter().find(|pc| pc.card.id == tc.card_id))
             .collect();
 
         Ok(enemies)

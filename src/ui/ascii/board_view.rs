@@ -1,10 +1,7 @@
 use crossterm::style::Color;
 
 use crate::{
-    models::{
-        board::Board, game::Game, placed_card::PlacedCard, player::Player, tile::Tile,
-        tile_card::TileCard,
-    },
+    models::{game::Game, tile::Tile, tile_card::TileCard},
     ui::ascii::{
         ascii_view::AsciiView,
         constants::{CARD_HEIGHT, CARD_WIDTH},
