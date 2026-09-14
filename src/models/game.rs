@@ -1,9 +1,13 @@
 use rand::{Rng, RngExt, rngs::ThreadRng, seq::IndexedRandom};
 
 use crate::{
-    assets::cards::CARDS, models::{
-        action::Action, active_player::ActivePlayer, board::Board, card::Card, direction::Direction, game_state::GameState, player::Player,
-    }, utils::{constants::MAX_HAND_CARDS, random::VecRandomExt},
+    assets::cards::CARDS,
+    models::{
+        action::Action, active_player::ActivePlayer, board::Board, card::Card,
+        direction::Direction, game_state::GameState, placed_card::PlacedCard, player::Player,
+        position::Position,
+    },
+    utils::{constants::MAX_HAND_CARDS, random::VecRandomExt},
 };
 
 type TurnResult = Result<(), String>;
@@ -14,6 +18,7 @@ pub struct Game<'a> {
     pub cpu: Player,
     pub state: GameState,
     pub active_player: ActivePlayer,
+    placed_cards: Vec<PlacedCard>,
     rng: &'a mut ThreadRng,
 }
 
@@ -31,6 +36,7 @@ impl<'a> Game<'a> {
             rng,
             state: GameState::NotStarted,
             active_player: ActivePlayer::None,
+            placed_cards: vec![],
         }
     }
 
@@ -71,7 +77,7 @@ impl<'a> Game<'a> {
     }
 
     fn apply_effects(&mut self) -> TurnResult {
-
+        self.attack()?;
 
         self.state = GameState::EndTurn;
         Ok(())
@@ -119,7 +125,8 @@ impl<'a> Game<'a> {
             return Err("card id not found".to_string());
         };
 
-        self.board.place_card(card, action.target, player.id)?;
+        self.board.place_card(&card, action.target, player.id)?;
+        self.placed_cards.push(PlacedCard::new(card, action.target));
 
         Ok(())
     }
@@ -134,7 +141,10 @@ impl<'a> Game<'a> {
             return Err("unable to draw a card from cpu".to_string());
         };
 
-        self.board.place_card(card, target, cpu.id)
+        self.board.place_card(&card, target, cpu.id)?;
+        self.placed_cards.push(PlacedCard::new(card, target));
+
+        Ok(())
     }
 
     fn start_game(&mut self) -> TurnResult {
@@ -156,21 +166,53 @@ impl<'a> Game<'a> {
         }
     }
 
-    // fn attack(&mut self) -> TurnResult {
-    //     let Some(pc) = self.board.last_played() else {
-    //         return Err("Could not load last played card".to_string());
-    //     };
+    fn last_placed(&self) -> Option<&PlacedCard> {
+        self.placed_cards.last()
+    }
 
-    //     let owner_id = self.board.tile_owner(pc.pos)?;
+    pub fn find_placed(&self, card_id: u64) -> Option<&PlacedCard> {
+        self.placed_cards.iter().find(|pc| {
+            return pc.card.id == card_id;
+        })
+    }
 
-    //     let card = &pc.card;
-    //     let dirs = card.facing();
+    fn neighboring_enemies<'b>(
+        &self,
+        pos: Position,
+        dirs: Vec<Direction>,
+        placed_cards: &'b [PlacedCard],
+    ) -> Result<Vec<&'b PlacedCard>, String> {
+        let owner_id = self.get_active_player()?.id;
 
-    //     let enemies = self.board.neighboring_enemies(pc.pos, dirs)?;
-    //     for enemy in enemies {
-    //         self.board.swap_owner(enemy.pos, owner_id)?;
-    //     }
+        let enemies = dirs
+            .iter()
+            .filter_map(|dir| self.board.get_relative(pos, dir))
+            .filter(|tc| tc.owner_id != owner_id)
+            .filter_map(|tc| {
+                placed_cards.iter().find(|pc| {
+                    return pc.card.id == tc.card_id;
+                })
+            })
+            .collect();
 
-    //     Ok(())
-    // }
+        Ok(enemies)
+    }
+
+    fn attack(&mut self) -> TurnResult {
+        let Some(pc) = self.last_placed() else {
+            return Err("Could not load last played card".to_string());
+        };
+
+        let owner_id = self.get_active_player()?.id;
+
+        let card = &pc.card;
+        let dirs = card.facing();
+
+        let enemies = self.neighboring_enemies(pc.pos, dirs, &self.placed_cards)?;
+        for enemy in enemies {
+            self.board.swap_owner(enemy.pos, owner_id)?;
+        }
+
+        Ok(())
+    }
 }

@@ -27,14 +27,10 @@ impl Terminal {
     pub fn render(&mut self, game: &Game) -> io::Result<()> {
         self.clear()?;
 
-        let board = &game.board;
-        let player = &game.player;
-        let cpu = &game.cpu;
-
-        let board_view = BoardView::new(board, player, cpu);
+        let board_view = BoardView::new(game);
 
         board_view.render()?;
-        self.render_hand(&player.hand)?;
+        self.render_hand(&game.player.hand)?;
 
         Ok(())
     }

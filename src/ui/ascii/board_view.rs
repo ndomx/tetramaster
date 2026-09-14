@@ -1,7 +1,10 @@
 use crossterm::style::Color;
 
 use crate::{
-    models::{board::Board, player::Player, tile::Tile, tile_card::TileCard},
+    models::{
+        board::Board, game::Game, placed_card::PlacedCard, player::Player, tile::Tile,
+        tile_card::TileCard,
+    },
     ui::ascii::{
         ascii_view::AsciiView,
         constants::{CARD_HEIGHT, CARD_WIDTH},
@@ -14,19 +17,17 @@ use crate::{
 };
 
 pub struct BoardView<'a> {
-    board: &'a Board,
-    player: &'a Player,
-    cpu: &'a Player,
+    game: &'a Game<'a>,
 }
 
 impl<'a> BoardView<'a> {
-    pub fn new(board: &'a Board, player: &'a Player, cpu: &'a Player) -> Self {
-        Self { board, player, cpu }
+    pub fn new(game: &'a Game) -> Self {
+        Self { game }
     }
 
     fn row_tiles(&self, line: usize) -> Vec<TileView<'a>> {
         let row = line / CARD_HEIGHT;
-        let tiles = self.board.row(row);
+        let tiles = self.game.board.row(row);
 
         tiles
             .iter()
@@ -39,8 +40,8 @@ impl<'a> BoardView<'a> {
     }
 
     fn build_card_view(&self, played_card: &TileCard) -> TileCardView<'a> {
-        let pc = self.board.find_placed(played_card.card_id).unwrap();
-        let color = if played_card.owner_id == self.player.id {
+        let pc = self.game.find_placed(played_card.card_id).unwrap();
+        let color = if played_card.owner_id == self.game.player.id {
             Color::Blue
         } else {
             Color::Red
