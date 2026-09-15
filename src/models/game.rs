@@ -4,6 +4,7 @@ use rand::{Rng, RngExt, rngs::ThreadRng, seq::IndexedRandom};
 
 use crate::{
     assets::cards::CARDS,
+    min,
     models::{
         action::Action, active_player::ActivePlayer, board::Board, card::Card,
         direction::Direction, effect_instance::EffectInstance, game_state::GameState,
@@ -11,6 +12,8 @@ use crate::{
     },
     utils::{constants::MAX_HAND_CARDS, random::VecRandomExt},
 };
+
+use super::battle_class::BattleClass;
 
 type TurnResult = Result<(), String>;
 
@@ -83,23 +86,15 @@ impl<'a> Game<'a> {
             return Err("invalid state".to_string());
         };
 
-        let Some(effect) = pending.pop_front() else {
+        let Some(effect_instance) = pending.pop_front() else {
             self.state = GameState::EndTurn;
             return Ok(());
         };
 
-        // let source = self
-        //     .find_placed(effect.source_card_id)
-        //     .ok_or("Cannot find source")?;
-        let target = self
-            .find_placed(effect.target_card_id)
-            .ok_or("Cannot find target")?;
-
-        let active_player = self.get_active_player()?;
-
-        self.board.swap_owner(target.pos, active_player.id);
-
-        Ok(())
+        match effect_instance.effect {
+            super::effect::Effect::Attack => self.attack(effect_instance),
+            super::effect::Effect::Capture => self.capture(effect_instance),
+        }
     }
 
     fn end_turn(&mut self) -> TurnResult {
@@ -203,10 +198,6 @@ impl<'a> Game<'a> {
         }
     }
 
-    fn last_placed(&self) -> Option<&PlacedCard> {
-        self.placed_cards.last()
-    }
-
     pub fn find_placed(&self, card_id: u64) -> Option<&PlacedCard> {
         self.placed_cards.iter().find(|pc| pc.card.id == card_id)
     }
@@ -224,21 +215,64 @@ impl<'a> Game<'a> {
         Ok(enemies)
     }
 
-    // fn attack(&mut self) -> TurnResult {
-    //     let Some(pc) = self.last_placed() else {
-    //         return Err("Could not load last played card".to_string());
-    //     };
+    fn attack(&mut self, effect_instance: EffectInstance) -> TurnResult {
+        let source = self
+            .find_placed(effect_instance.source_card_id)
+            .ok_or("Cannot find source")?;
 
-    //     let owner_id = self.get_active_player()?.id;
+        let challenger = &source.card;
 
-    //     let card = &pc.card;
-    //     let dirs = card.facing();
+        let atk_pwr = challenger.asset.attack + rand::random_range(0..16u8);
+        let atk_penalty = rand::random_range(0..=atk_pwr);
+        let atk = atk_pwr.saturating_sub(atk_penalty);
 
-    //     let enemies = self.neighboring_enemies(pc.pos, dirs, &self.placed_cards)?;
-    //     for enemy in enemies {
-    //         self.board.swap_owner(enemy.pos, owner_id)?;
-    //     }
+        let target = self
+            .find_placed(effect_instance.target_card_id)
+            .ok_or("Cannot find target")?;
 
-    //     Ok(())
-    // }
+        let defending = &target.card;
+        let def_stat = match challenger.asset.battle_class {
+            BattleClass::Physical => defending.asset.phys_defense,
+            BattleClass::Magic => defending.asset.mag_defense,
+            BattleClass::Flexible => {
+                min!(defending.asset.phys_defense, defending.asset.mag_defense)
+            }
+            BattleClass::Assault => min!(
+                defending.asset.phys_defense,
+                defending.asset.mag_defense,
+                defending.asset.attack
+            ),
+        };
+
+        let def_pwr = def_stat + rand::random_range(0..16u8);
+        let def_penalty = rand::random_range(0..=def_pwr);
+        let def = def_pwr.saturating_sub(def_penalty);
+
+        let (challenger_id, defendant_id) = match self.active_player {
+            ActivePlayer::Player => Ok((self.player.id, self.cpu.id)),
+            ActivePlayer::Cpu => Ok((self.cpu.id, self.player.id)),
+            ActivePlayer::None => Err("invalid active player".to_string()),
+        }?;
+
+        println!("atk={}, def={}", atk, def);
+
+        match atk > def {
+            true => self.board.swap_owner(target.pos, challenger_id),
+            false => self.board.swap_owner(source.pos, defendant_id),
+        }?;
+
+        Ok(())
+    }
+
+    fn capture(&mut self, effect_instance: EffectInstance) -> TurnResult {
+        let target = self
+            .find_placed(effect_instance.target_card_id)
+            .ok_or("Cannot find target")?;
+
+        let active_player = self.get_active_player()?;
+
+        self.board.swap_owner(target.pos, active_player.id)?;
+
+        Ok(())
+    }
 }
