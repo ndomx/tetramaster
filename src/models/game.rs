@@ -4,17 +4,14 @@ use rand::{Rng, RngExt, rngs::ThreadRng, seq::IndexedRandom};
 
 use crate::{
     assets::cards::CARDS,
-    min,
+    commands::{AttackOutcome, AttackParams, attack},
     models::{
         action::Action, active_player::ActivePlayer, board::Board, card::Card,
         direction::Direction, effect::Effect, effect_instance::EffectInstance,
-        game_state::GameState, placed_card::PlacedCard, player::Player, position::Position,
-        tile_card::TileCard,
+        game_state::GameState, player::Player, position::Position, tile_card::TileCard,
     },
     utils::{constants::MAX_HAND_CARDS, random::VecRandomExt},
 };
-
-use super::battle_class::BattleClass;
 
 type TurnResult = Result<(), String>;
 
@@ -24,7 +21,6 @@ pub struct Game<'a> {
     pub cpu: Player,
     pub state: GameState,
     pub active_player: ActivePlayer,
-    // placed_cards: Vec<PlacedCard>,
     rng: &'a mut ThreadRng,
 }
 
@@ -229,51 +225,27 @@ impl<'a> Game<'a> {
     }
 
     fn attack(&mut self, effect_instance: EffectInstance) -> TurnResult {
-        let (source_tc, sourc_pos) = self
+        let (source_tc, source_pos) = self
             .board
             .find_placed_by_id(effect_instance.source_card_id)
             .ok_or("Cannot find source")?;
-
-        let challenger = &source_tc.card;
-
-        let atk_pwr = challenger.stats.attack + rand::random_range(0..16u8);
-        let atk_penalty = rand::random_range(0..=atk_pwr);
-        let atk = atk_pwr.saturating_sub(atk_penalty);
 
         let (target_tc, target_pos) = self
             .board
             .find_placed_by_id(effect_instance.target_card_id)
             .ok_or("Cannot find target")?;
 
-        let defending = &target_tc.card;
-        let def_stat = match challenger.stats.battle_class {
-            BattleClass::Physical => defending.stats.phys_defense,
-            BattleClass::Magic => defending.stats.mag_defense,
-            BattleClass::Flexible => {
-                min!(defending.stats.phys_defense, defending.stats.mag_defense)
-            }
-            BattleClass::Assault => min!(
-                defending.stats.phys_defense,
-                defending.stats.mag_defense,
-                defending.stats.attack
-            ),
-        };
+        let result = attack(AttackParams {
+            attacker: &source_tc.card,
+            defender: &target_tc.card,
+        })?;
 
-        let def_pwr = def_stat + rand::random_range(0..16u8);
-        let def_penalty = rand::random_range(0..=def_pwr);
-        let def = def_pwr.saturating_sub(def_penalty);
-
-        let (challenger_id, defendant_id) = match self.active_player {
-            ActivePlayer::Player => Ok((self.player.id, self.cpu.id)),
-            ActivePlayer::Cpu => Ok((self.cpu.id, self.player.id)),
-            ActivePlayer::None => Err("invalid active player".to_string()),
-        }?;
-
-        println!("atk={}, def={}", atk, def);
-
-        match atk > def {
-            true => self.board.set_owner(target_pos, challenger_id),
-            false => self.board.set_owner(sourc_pos, defendant_id),
+        match result {
+            AttackOutcome::Win => self.board.set_owner(target_pos, source_tc.owner_id),
+            AttackOutcome::Lose => {
+                self.state = GameState::EndTurn;
+                self.board.set_owner(source_pos, target_tc.owner_id)
+            },
         }?;
 
         Ok(())

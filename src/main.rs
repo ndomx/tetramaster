@@ -7,6 +7,7 @@ use std::{
 use crate::{models::game::Game, ui::terminal::Terminal};
 
 mod assets;
+mod commands;
 mod models;
 mod ui;
 mod utils;
