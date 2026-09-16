@@ -1,4 +1,8 @@
-use std::{io::stdout, thread::sleep, time::Duration};
+use std::{
+    io::{stdin, stdout},
+    thread::sleep,
+    time::Duration,
+};
 
 use crate::{models::game::Game, ui::terminal::Terminal};
 
@@ -14,8 +18,9 @@ fn main() {
     let mut terminal = Terminal::new(stdout());
 
     loop {
-        sleep(Duration::from_millis(1000));
+        stdin().read_line(&mut String::new()).ok();
         // sleep(Duration::from_millis(250));
+
         terminal.render(&game).ok();
         println!("Current State = {:?}", game.state);
 

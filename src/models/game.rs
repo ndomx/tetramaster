@@ -7,8 +7,8 @@ use crate::{
     min,
     models::{
         action::Action, active_player::ActivePlayer, board::Board, card::Card,
-        direction::Direction, effect_instance::EffectInstance, game_state::GameState,
-        placed_card::PlacedCard, player::Player, position::Position,
+        direction::Direction, effect::Effect, effect_instance::EffectInstance,
+        game_state::GameState, placed_card::PlacedCard, player::Player, position::Position,
     },
     utils::{constants::MAX_HAND_CARDS, random::VecRandomExt},
 };
@@ -173,7 +173,16 @@ impl<'a> Game<'a> {
         let effects = self
             .neighboring_enemies(target, card.facing())?
             .iter()
-            .map(|&card_id| EffectInstance::new(card.id, card_id, super::effect::Effect::Attack))
+            .filter_map(|&(card_id, dir)| {
+                self.find_placed(card_id).map(|c| {
+                    let e = match c.card.is_facing(dir.opposite()) {
+                        true => Effect::Attack,
+                        false => Effect::Capture,
+                    };
+
+                    EffectInstance::new(card.id, card_id, e)
+                })
+            })
             .collect();
 
         Ok(effects)
@@ -202,14 +211,18 @@ impl<'a> Game<'a> {
         self.placed_cards.iter().find(|pc| pc.card.id == card_id)
     }
 
-    fn neighboring_enemies(&self, pos: Position, dirs: Vec<Direction>) -> Result<Vec<u64>, String> {
+    fn neighboring_enemies(
+        &self,
+        pos: Position,
+        dirs: Vec<Direction>,
+    ) -> Result<Vec<(u64, Direction)>, String> {
         let owner_id = self.get_active_player()?.id;
 
         let enemies = dirs
             .iter()
-            .filter_map(|dir| self.board.get_relative(pos, dir))
-            .filter(|tc| tc.owner_id != owner_id)
-            .map(|tc| tc.card_id)
+            .filter_map(|dir| self.board.get_relative(pos, dir).map(|tc| (tc, dir)))
+            .filter(|(tc, _)| tc.owner_id != owner_id)
+            .map(|(tc, &dir)| (tc.card_id, dir))
             .collect();
 
         Ok(enemies)

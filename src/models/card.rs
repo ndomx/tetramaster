@@ -37,8 +37,8 @@ impl Card {
             .collect()
     }
 
-    pub fn is_facing(&self, direction: &Direction) -> bool {
-        let idx = *direction as u8;
+    pub fn is_facing(&self, direction: Direction) -> bool {
+        let idx = direction as u8;
         let mask: u8 = 1 << idx;
 
         self.arrows & mask > 0
