@@ -4,6 +4,7 @@ pub mod battle_class;
 pub mod board;
 pub mod card;
 pub mod card_asset;
+pub mod card_stats;
 pub mod direction;
 pub mod effect;
 pub mod effect_instance;

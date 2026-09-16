@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Clone, Copy, Debug)]
 pub enum BattleClass {
     Physical,
     Magic,

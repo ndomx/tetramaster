@@ -222,7 +222,7 @@ impl<'a> Game<'a> {
 
         let challenger = &source.card;
 
-        let atk_pwr = challenger.asset.attack + rand::random_range(0..16u8);
+        let atk_pwr = challenger.stats.attack + rand::random_range(0..16u8);
         let atk_penalty = rand::random_range(0..=atk_pwr);
         let atk = atk_pwr.saturating_sub(atk_penalty);
 
@@ -231,16 +231,16 @@ impl<'a> Game<'a> {
             .ok_or("Cannot find target")?;
 
         let defending = &target.card;
-        let def_stat = match challenger.asset.battle_class {
-            BattleClass::Physical => defending.asset.phys_defense,
-            BattleClass::Magic => defending.asset.mag_defense,
+        let def_stat = match challenger.stats.battle_class {
+            BattleClass::Physical => defending.stats.phys_defense,
+            BattleClass::Magic => defending.stats.mag_defense,
             BattleClass::Flexible => {
-                min!(defending.asset.phys_defense, defending.asset.mag_defense)
+                min!(defending.stats.phys_defense, defending.stats.mag_defense)
             }
             BattleClass::Assault => min!(
-                defending.asset.phys_defense,
-                defending.asset.mag_defense,
-                defending.asset.attack
+                defending.stats.phys_defense,
+                defending.stats.mag_defense,
+                defending.stats.attack
             ),
         };
 

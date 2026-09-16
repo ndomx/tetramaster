@@ -47,7 +47,7 @@ impl<'a> TileCardView<'a> {
         });
 
         let width = self.width();
-        format!("│{}{:^width$}{}│", west, self.card.stats(), east)
+        format!("│{}{:^width$}{}│", west, self.card.format_stats(), east)
     }
 
     fn bottom_line(&self) -> String {
