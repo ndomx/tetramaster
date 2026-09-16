@@ -31,7 +31,7 @@ impl Board {
         idx.and_then(|i| self.tiles.get(i))
     }
 
-    pub fn get_relative(&self, pos: Position, dir: &Direction) -> Option<&TileCard> {
+    pub fn get_relative(&self, pos: Position, dir: Direction) -> Option<&TileCard> {
         let next = pos.relative(
             dir,
             Position {
@@ -54,7 +54,7 @@ impl Board {
 
     pub fn place_card(
         &mut self,
-        card: &Card,
+        card: Card,
         target: Position,
         owner_id: u64,
     ) -> Result<(), String> {
@@ -62,10 +62,7 @@ impl Board {
             return Err(format!("invalid position {:?}", target));
         };
 
-        self.tiles[idx] = Tile::Card(TileCard {
-            owner_id,
-            card_id: card.id,
-        });
+        self.tiles[idx] = Tile::Card(TileCard { owner_id, card });
 
         Ok(())
     }
@@ -85,21 +82,44 @@ impl Board {
             .choose(rng)
     }
 
-    pub fn swap_owner(&mut self, pos: Position, owner_id: u64) -> Result<u64, String> {
+    pub fn neighbors(&self, pos: Position) -> Vec<(&TileCard, Direction)> {
+        (0..8u8)
+            .filter_map(|k| Direction::try_from(k).ok())
+            .filter_map(|dir| self.get_relative(pos, dir).map(|tc| (tc, dir)))
+            .collect()
+    }
+
+    pub fn set_owner(&mut self, pos: Position, owner_id: u64) -> Result<(), String> {
         let Some(idx) = pos2idx(pos) else {
             return Err(format!("invalid pos {:?}", pos));
         };
 
-        let card_id = self
+        let tc = self
             .tiles
-            .get(idx)
+            .get_mut(idx)
             .and_then(|t| match t {
-                Tile::Card(tc) => Some(tc.card_id),
+                Tile::Card(tc) => Some(tc),
                 _ => None,
             })
             .ok_or("Tile is not a card".to_string())?;
 
-        self.tiles[idx] = Tile::Card(TileCard { owner_id, card_id });
-        Ok(card_id)
+        tc.owner_id = owner_id;
+        Ok(())
+    }
+
+    pub fn find_placed_by_id(&self, card_id: u64) -> Option<(&TileCard, Position)> {
+        self.tiles
+            .iter()
+            .enumerate()
+            .find_map(|(idx, tile)| match tile {
+                Tile::Card(tc) => {
+                    if tc.card.id != card_id {
+                        return None;
+                    }
+
+                    idx2pos(idx).map(|pos| (tc, pos))
+                }
+                _ => None,
+            })
     }
 }

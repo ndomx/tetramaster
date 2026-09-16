@@ -11,7 +11,7 @@ impl Position {
         Self { row, col }
     }
 
-    pub fn relative(&self, direction: &Direction, bounds: Self) -> Option<Self> {
+    pub fn relative(&self, direction: Direction, bounds: Self) -> Option<Self> {
         match direction {
             Direction::N => self.plus(-1, 0, bounds),
             Direction::NE => self.plus(-1, 1, bounds),

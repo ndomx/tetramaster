@@ -36,15 +36,14 @@ impl<'a> BoardView<'a> {
             .collect()
     }
 
-    fn build_card_view(&self, played_card: &TileCard) -> TileCardView<'a> {
-        let pc = self.game.find_placed(played_card.card_id).unwrap();
+    fn build_card_view(&self, played_card: &'a TileCard) -> TileCardView<'a> {
         let color = if played_card.owner_id == self.game.player.id {
             Color::Blue
         } else {
             Color::Red
         };
 
-        TileCardView::new(&pc.card, color)
+        TileCardView::new(&played_card.card, color)
     }
 }
 

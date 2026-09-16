@@ -9,6 +9,7 @@ use crate::{
         action::Action, active_player::ActivePlayer, board::Board, card::Card,
         direction::Direction, effect::Effect, effect_instance::EffectInstance,
         game_state::GameState, placed_card::PlacedCard, player::Player, position::Position,
+        tile_card::TileCard,
     },
     utils::{constants::MAX_HAND_CARDS, random::VecRandomExt},
 };
@@ -23,7 +24,7 @@ pub struct Game<'a> {
     pub cpu: Player,
     pub state: GameState,
     pub active_player: ActivePlayer,
-    placed_cards: Vec<PlacedCard>,
+    // placed_cards: Vec<PlacedCard>,
     rng: &'a mut ThreadRng,
 }
 
@@ -41,7 +42,7 @@ impl<'a> Game<'a> {
             rng,
             state: GameState::NotStarted,
             active_player: ActivePlayer::None,
-            placed_cards: vec![],
+            // placed_cards: vec![],
         }
     }
 
@@ -136,12 +137,13 @@ impl<'a> Game<'a> {
             return Err("card id not found".to_string());
         };
 
-        self.board.place_card(&card, action.target, player.id)?;
+        let facing = card.facing();
+        let card_id = card.id;
 
-        let effects = self.spawn_effects(&card, action.target)?;
+        self.board.place_card(card, action.target, player.id)?;
+
+        let effects = self.spawn_effects(card_id, facing, action.target)?;
         self.state = GameState::ApplyEffects { pending: effects };
-
-        self.placed_cards.push(PlacedCard::new(card, action.target));
 
         Ok(())
     }
@@ -156,32 +158,33 @@ impl<'a> Game<'a> {
             return Err("unable to draw a card from cpu".to_string());
         };
 
-        self.board.place_card(&card, target, cpu.id)?;
+        let facing = card.facing();
+        let card_id = card.id;
 
-        let effects = self.spawn_effects(&card, target)?;
+        self.board.place_card(card, target, cpu.id)?;
+
+        let effects = self.spawn_effects(card_id, facing, target)?;
         self.state = GameState::ApplyEffects { pending: effects };
 
-        self.placed_cards.push(PlacedCard::new(card, target));
         Ok(())
     }
 
     fn spawn_effects(
         &self,
-        card: &Card,
-        target: Position,
+        card_id: u64,
+        dirs: Vec<Direction>,
+        source: Position,
     ) -> Result<VecDeque<EffectInstance>, String> {
         let effects = self
-            .neighboring_enemies(target, card.facing())?
+            .neighboring_enemies(source, dirs)?
             .iter()
-            .filter_map(|&(card_id, dir)| {
-                self.find_placed(card_id).map(|c| {
-                    let e = match c.card.is_facing(dir.opposite()) {
-                        true => Effect::Attack,
-                        false => Effect::Capture,
-                    };
+            .map(|&(defender, dir)| {
+                let e = match defender.card.is_facing(dir.opposite()) {
+                    true => Effect::Attack,
+                    false => Effect::Capture,
+                };
 
-                    EffectInstance::new(card.id, card_id, e)
-                })
+                EffectInstance::new(card_id, defender.card.id, e)
             })
             .collect();
 
@@ -207,43 +210,42 @@ impl<'a> Game<'a> {
         }
     }
 
-    pub fn find_placed(&self, card_id: u64) -> Option<&PlacedCard> {
-        self.placed_cards.iter().find(|pc| pc.card.id == card_id)
-    }
-
     fn neighboring_enemies(
         &self,
         pos: Position,
         dirs: Vec<Direction>,
-    ) -> Result<Vec<(u64, Direction)>, String> {
+    ) -> Result<Vec<(&TileCard, Direction)>, String> {
         let owner_id = self.get_active_player()?.id;
 
-        let enemies = dirs
-            .iter()
-            .filter_map(|dir| self.board.get_relative(pos, dir).map(|tc| (tc, dir)))
+        let enemies = self
+            .board
+            .neighbors(pos)
+            .into_iter()
+            .filter(|(_, dir)| dirs.contains(dir))
             .filter(|(tc, _)| tc.owner_id != owner_id)
-            .map(|(tc, &dir)| (tc.card_id, dir))
             .collect();
 
         Ok(enemies)
     }
 
     fn attack(&mut self, effect_instance: EffectInstance) -> TurnResult {
-        let source = self
-            .find_placed(effect_instance.source_card_id)
+        let (source_tc, sourc_pos) = self
+            .board
+            .find_placed_by_id(effect_instance.source_card_id)
             .ok_or("Cannot find source")?;
 
-        let challenger = &source.card;
+        let challenger = &source_tc.card;
 
         let atk_pwr = challenger.stats.attack + rand::random_range(0..16u8);
         let atk_penalty = rand::random_range(0..=atk_pwr);
         let atk = atk_pwr.saturating_sub(atk_penalty);
 
-        let target = self
-            .find_placed(effect_instance.target_card_id)
+        let (target_tc, target_pos) = self
+            .board
+            .find_placed_by_id(effect_instance.target_card_id)
             .ok_or("Cannot find target")?;
 
-        let defending = &target.card;
+        let defending = &target_tc.card;
         let def_stat = match challenger.stats.battle_class {
             BattleClass::Physical => defending.stats.phys_defense,
             BattleClass::Magic => defending.stats.mag_defense,
@@ -270,21 +272,21 @@ impl<'a> Game<'a> {
         println!("atk={}, def={}", atk, def);
 
         match atk > def {
-            true => self.board.swap_owner(target.pos, challenger_id),
-            false => self.board.swap_owner(source.pos, defendant_id),
+            true => self.board.set_owner(target_pos, challenger_id),
+            false => self.board.set_owner(sourc_pos, defendant_id),
         }?;
 
         Ok(())
     }
 
     fn capture(&mut self, effect_instance: EffectInstance) -> TurnResult {
-        let target = self
-            .find_placed(effect_instance.target_card_id)
-            .ok_or("Cannot find target")?;
-
         let active_player = self.get_active_player()?;
+        let (_, target) = self
+            .board
+            .find_placed_by_id(effect_instance.target_card_id)
+            .ok_or("Unable to find target")?;
 
-        self.board.swap_owner(target.pos, active_player.id)?;
+        self.board.set_owner(target, active_player.id)?;
 
         Ok(())
     }
