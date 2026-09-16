@@ -171,7 +171,7 @@ impl<'a> Game<'a> {
         dirs: Vec<Direction>,
         source: Position,
     ) -> Result<VecDeque<EffectInstance>, String> {
-        let effects = self
+        let mut effects: Vec<EffectInstance> = self
             .neighboring_enemies(source, dirs)?
             .iter()
             .map(|&(defender, dir)| {
@@ -184,7 +184,8 @@ impl<'a> Game<'a> {
             })
             .collect();
 
-        Ok(effects)
+        effects.sort_by_key(|instance| instance.effect.priority());
+        Ok(VecDeque::from(effects))
     }
 
     fn start_game(&mut self) -> TurnResult {
@@ -245,7 +246,7 @@ impl<'a> Game<'a> {
             AttackOutcome::Lose => {
                 self.state = GameState::EndTurn;
                 self.board.set_owner(source_pos, target_tc.owner_id)
-            },
+            }
         }?;
 
         Ok(())
