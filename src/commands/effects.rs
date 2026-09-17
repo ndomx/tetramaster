@@ -34,6 +34,31 @@ pub fn generate_effects<'a>(
     Ok(VecDeque::from(effects))
 }
 
+pub fn spread_victory_effects<'a>(
+    params: GenerateEffectsParams<'a>,
+    pending_effects: &'a mut VecDeque<EffectInstance>,
+) -> Result<(), String> {
+    let tc_ref = params
+        .board
+        .get_card(params.position)
+        .ok_or("Could not find card")?;
+
+    let neighbors = scan_neighbors(
+        params.board,
+        tc_ref.owner_id,
+        params.position,
+        tc_ref.card.facing(),
+    );
+
+    neighbors.iter().for_each(|&(defender, _)| {
+        let effect = EffectInstance::new(tc_ref.card.id, defender.card.id, Effect::Capture);
+        pending_effects.retain(|eff| eff.target_card_id != defender.card.id);
+        pending_effects.push_front(effect);
+    });
+
+    Ok(())
+}
+
 fn scan_neighbors(
     board: &Board,
     ally_id: u64,

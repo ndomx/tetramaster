@@ -10,7 +10,6 @@ pub mod effect;
 pub mod effect_instance;
 pub mod game;
 pub mod game_state;
-pub mod placed_card;
 pub mod player;
 pub mod position;
 pub mod tile;

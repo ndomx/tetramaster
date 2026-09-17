@@ -2,10 +2,14 @@ use rand::{Rng, RngExt, rngs::ThreadRng, seq::IndexedRandom};
 
 use crate::{
     assets::cards::CARDS,
-    commands::{AttackOutcome, AttackParams, GenerateEffectsParams, attack, generate_effects},
+    commands::{
+        AttackOutcome, AttackParams, GenerateEffectsParams, attack, generate_effects,
+        spread_victory_effects,
+    },
     models::{
         action::Action, active_player::ActivePlayer, board::Board, card::Card,
         effect_instance::EffectInstance, game_state::GameState, player::Player, position::Position,
+        tile_card::TileCard,
     },
     utils::{constants::MAX_HAND_CARDS, random::VecRandomExt},
 };
@@ -198,14 +202,9 @@ impl<'a> Game<'a> {
         })?;
 
         match result {
-            AttackOutcome::Victory => self.board.set_owner(target_pos, source_tc.owner_id),
-            AttackOutcome::Defeat => {
-                self.state = GameState::EndTurn;
-                self.board.set_owner(source_pos, target_tc.owner_id)
-            }
-        }?;
-
-        Ok(())
+            AttackOutcome::Victory => self.on_victory(source_tc.owner_id, target_pos),
+            AttackOutcome::Defeat => self.on_defeat(target_tc.owner_id, source_pos)
+        }
     }
 
     fn capture(&mut self, effect_instance: EffectInstance) -> TurnResult {
@@ -218,5 +217,28 @@ impl<'a> Game<'a> {
         self.board.set_owner(target, active_player.id)?;
 
         Ok(())
+    }
+
+    fn on_victory(&mut self, owner_id: u64, pos: Position) -> TurnResult {
+        self.board.set_owner(pos, owner_id)?;
+
+        let GameState::ApplyEffects { pending } = &mut self.state else {
+            return Err("skip side effects".into());
+        };
+
+        spread_victory_effects(
+            GenerateEffectsParams {
+                position: pos,
+                board: &self.board,
+            },
+            pending,
+        )?;
+
+        Ok(())
+    }
+
+    fn on_defeat(&mut self, owner_id: u64, pos: Position) -> TurnResult {
+        self.state = GameState::EndTurn;
+        self.board.set_owner(pos, owner_id)
     }
 }
