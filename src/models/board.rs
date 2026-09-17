@@ -31,19 +31,24 @@ impl Board {
         idx.and_then(|i| self.tiles.get(i))
     }
 
-    pub fn get_relative(&self, pos: Position, dir: Direction) -> Option<&TileCard> {
-        let next = pos.relative(
+    pub fn get_card(&self, pos: Position) -> Option<&TileCard> {
+        pos2idx(pos)
+            .and_then(|i| self.tiles.get(i))
+            .and_then(|t| match t {
+                Tile::Card(tc) => Some(tc),
+                _ => None,
+            })
+    }
+
+    pub fn get_relative(&self, pos: Position, dir: &Direction) -> Option<&TileCard> {
+        pos.relative(
             dir,
             Position {
                 row: BOARD_SIZE,
                 col: BOARD_SIZE,
             },
-        );
-
-        next.and_then(|p| self.get(p)).and_then(|t| match t {
-            Tile::Card(tc) => Some(tc),
-            _ => None,
-        })
+        )
+        .and_then(|next| self.get_card(next))
     }
 
     pub fn row(&self, row: usize) -> &[Tile] {
@@ -80,13 +85,6 @@ impl Board {
                 _ => None,
             })
             .choose(rng)
-    }
-
-    pub fn neighbors(&self, pos: Position) -> Vec<(&TileCard, Direction)> {
-        (0..8u8)
-            .filter_map(|k| Direction::try_from(k).ok())
-            .filter_map(|dir| self.get_relative(pos, dir).map(|tc| (tc, dir)))
-            .collect()
     }
 
     pub fn set_owner(&mut self, pos: Position, owner_id: u64) -> Result<(), String> {

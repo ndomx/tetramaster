@@ -1,14 +1,11 @@
-use std::collections::VecDeque;
-
 use rand::{Rng, RngExt, rngs::ThreadRng, seq::IndexedRandom};
 
 use crate::{
     assets::cards::CARDS,
-    commands::{AttackOutcome, AttackParams, attack},
+    commands::{AttackOutcome, AttackParams, GenerateEffectsParams, attack, generate_effects},
     models::{
         action::Action, active_player::ActivePlayer, board::Board, card::Card,
-        direction::Direction, effect::Effect, effect_instance::EffectInstance,
-        game_state::GameState, player::Player, position::Position, tile_card::TileCard,
+        effect_instance::EffectInstance, game_state::GameState, player::Player, position::Position,
     },
     utils::{constants::MAX_HAND_CARDS, random::VecRandomExt},
 };
@@ -128,64 +125,39 @@ impl<'a> Game<'a> {
             return Err("position is not available".to_string());
         }
 
-        let player = &mut self.player;
-        let Some(card) = player.pop_card(action.card_id) else {
-            return Err("card id not found".to_string());
-        };
+        let card = self
+            .player
+            .pop_card(action.card_id)
+            .ok_or("card id not found")?;
 
-        let facing = card.facing();
-        let card_id = card.id;
-
-        self.board.place_card(card, action.target, player.id)?;
-
-        let effects = self.spawn_effects(card_id, facing, action.target)?;
-        self.state = GameState::ApplyEffects { pending: effects };
-
-        Ok(())
+        self.place_card(card, self.player.id, action.target)
     }
 
     fn cpu_turn(&mut self) -> TurnResult {
-        let Some(target) = self.board.find_available(self.rng) else {
-            return Err("unable to find a position".to_string());
-        };
+        let target = self
+            .board
+            .find_available(self.rng)
+            .ok_or("unable to find a position")?;
 
-        let cpu = &mut self.cpu;
-        let Some(card) = cpu.hand.take_random(self.rng) else {
-            return Err("unable to draw a card from cpu".to_string());
-        };
+        let card = self
+            .cpu
+            .hand
+            .take_random(self.rng)
+            .ok_or("unable to draw a card from cpu")?;
 
-        let facing = card.facing();
-        let card_id = card.id;
+        self.place_card(card, self.cpu.id, target)
+    }
 
-        self.board.place_card(card, target, cpu.id)?;
+    fn place_card(&mut self, card: Card, owner_id: u64, target: Position) -> TurnResult {
+        self.board.place_card(card, target, owner_id)?;
+        let effects = generate_effects(GenerateEffectsParams {
+            position: target,
+            board: &self.board,
+        })?;
 
-        let effects = self.spawn_effects(card_id, facing, target)?;
         self.state = GameState::ApplyEffects { pending: effects };
 
         Ok(())
-    }
-
-    fn spawn_effects(
-        &self,
-        card_id: u64,
-        dirs: Vec<Direction>,
-        source: Position,
-    ) -> Result<VecDeque<EffectInstance>, String> {
-        let mut effects: Vec<EffectInstance> = self
-            .neighboring_enemies(source, dirs)?
-            .iter()
-            .map(|&(defender, dir)| {
-                let e = match defender.card.is_facing(dir.opposite()) {
-                    true => Effect::Attack,
-                    false => Effect::Capture,
-                };
-
-                EffectInstance::new(card_id, defender.card.id, e)
-            })
-            .collect();
-
-        effects.sort_by_key(|instance| instance.effect.priority());
-        Ok(VecDeque::from(effects))
     }
 
     fn start_game(&mut self) -> TurnResult {
@@ -205,24 +177,6 @@ impl<'a> Game<'a> {
             ActivePlayer::Player => Ok(&self.player),
             _ => Err("Invalid active player".to_string()),
         }
-    }
-
-    fn neighboring_enemies(
-        &self,
-        pos: Position,
-        dirs: Vec<Direction>,
-    ) -> Result<Vec<(&TileCard, Direction)>, String> {
-        let owner_id = self.get_active_player()?.id;
-
-        let enemies = self
-            .board
-            .neighbors(pos)
-            .into_iter()
-            .filter(|(_, dir)| dirs.contains(dir))
-            .filter(|(tc, _)| tc.owner_id != owner_id)
-            .collect();
-
-        Ok(enemies)
     }
 
     fn attack(&mut self, effect_instance: EffectInstance) -> TurnResult {
