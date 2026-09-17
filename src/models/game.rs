@@ -10,6 +10,8 @@ use crate::{
     utils::{constants::MAX_HAND_CARDS, random::VecRandomExt},
 };
 
+use super::effect::Effect;
+
 type TurnResult = Result<(), String>;
 
 pub struct Game<'a> {
@@ -86,8 +88,8 @@ impl<'a> Game<'a> {
         };
 
         match effect_instance.effect {
-            super::effect::Effect::Attack => self.attack(effect_instance),
-            super::effect::Effect::Capture => self.capture(effect_instance),
+            Effect::Attack => self.attack(effect_instance),
+            Effect::Capture => self.capture(effect_instance),
         }
     }
 
@@ -196,8 +198,8 @@ impl<'a> Game<'a> {
         })?;
 
         match result {
-            AttackOutcome::Win => self.board.set_owner(target_pos, source_tc.owner_id),
-            AttackOutcome::Lose => {
+            AttackOutcome::Victory => self.board.set_owner(target_pos, source_tc.owner_id),
+            AttackOutcome::Defeat => {
                 self.state = GameState::EndTurn;
                 self.board.set_owner(source_pos, target_tc.owner_id)
             }

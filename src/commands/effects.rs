@@ -27,14 +27,7 @@ pub fn generate_effects<'a>(
 
     let mut effects: Vec<EffectInstance> = neighbors
         .iter()
-        .map(|&(defender, dir)| {
-            let e = match defender.card.is_facing(dir.opposite()) {
-                true => Effect::Attack,
-                false => Effect::Capture,
-            };
-
-            EffectInstance::new(tc_ref.card.id, defender.card.id, e)
-        })
+        .map(|&(defender, dir)| build_challenger_effect(tc_ref.card.id, defender, dir))
         .collect();
 
     effects.sort_by_key(|ef_instance| ef_instance.effect.priority());
@@ -51,4 +44,17 @@ fn scan_neighbors(
         .filter_map(|dir| board.get_relative(position, dir).map(|tc| (tc, *dir)))
         .filter(|(tc, _)| tc.owner_id != ally_id)
         .collect()
+}
+
+fn build_challenger_effect(
+    source_card_id: u64,
+    defender: &TileCard,
+    dir: Direction,
+) -> EffectInstance {
+    let effect = match defender.card.is_facing(dir.opposite()) {
+        true => Effect::Attack,
+        false => Effect::Capture,
+    };
+
+    EffectInstance::new(source_card_id, defender.card.id, effect)
 }

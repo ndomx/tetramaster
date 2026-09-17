@@ -9,8 +9,8 @@ pub struct AttackParams<'a> {
 }
 
 pub enum AttackOutcome {
-    Win,
-    Lose,
+    Victory,
+    Defeat,
 }
 
 type AttackResult = Result<AttackOutcome, String>;
@@ -24,8 +24,8 @@ pub fn attack<'a>(params: AttackParams<'a>) -> AttackResult {
 
     println!("atk={}, def={}", attack_power, defense_power);
     match attack_power > defense_power {
-        true => Ok(AttackOutcome::Win),
-        false => Ok(AttackOutcome::Lose),
+        true => Ok(AttackOutcome::Victory),
+        false => Ok(AttackOutcome::Defeat),
     }
 }
 
