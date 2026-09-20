@@ -51,10 +51,6 @@ impl Card {
 
         format!("{:X}{}{:X}{:X}", atk, self.stats.battle_class, phd, mgd)
     }
-
-    pub fn name(&self) -> &str {
-        &self.asset.name
-    }
 }
 
 impl Display for Card {
