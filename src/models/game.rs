@@ -40,7 +40,6 @@ impl<'a> Game<'a> {
             rng,
             state: GameState::NotStarted,
             active_player: ActivePlayer::None,
-            // placed_cards: vec![],
         }
     }
 
@@ -60,8 +59,6 @@ impl<'a> Game<'a> {
 
     pub fn play_card(&mut self, action: Action) -> TurnResult {
         self.player_turn(action)?;
-
-        // self.state = GameState::ApplyEffects;
         Ok(())
     }
 
@@ -105,7 +102,15 @@ impl<'a> Game<'a> {
     }
 
     fn end_turn(&mut self) -> TurnResult {
-        // if game.finished
+        if self.board.count_empty() == 0 {
+            self.state = GameState::Finished;
+            return Ok(());
+        }
+
+        if self.player.hand.is_empty() && self.cpu.hand.is_empty() {
+            self.state = GameState::Finished;
+            return Ok(());
+        }
 
         self.active_player = match self.active_player {
             ActivePlayer::Cpu => ActivePlayer::Player,

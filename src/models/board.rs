@@ -131,4 +131,11 @@ impl Board {
             .filter(|tc| tc.owner_id == owner_id)
             .count()
     }
+
+    pub fn count_empty(&self) -> usize {
+        self.tiles
+            .iter()
+            .filter(|t| matches!(t, Tile::Empty))
+            .count()
+    }
 }
