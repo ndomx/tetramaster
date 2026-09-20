@@ -15,7 +15,7 @@ fn main() {
     let mut terminal = Terminal::new(stdout());
 
     loop {
-        sleep(Duration::from_millis(250));
+        sleep(Duration::from_millis(500));
 
         terminal.render(&game).ok();
         println!("Current State = {:?}", game.state);
