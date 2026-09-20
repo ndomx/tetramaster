@@ -1,4 +1,4 @@
-use crossterm::style::Color;
+use crossterm::style::{Color};
 
 use crate::{
     models::{game::Game, tile::Tile, tile_card::TileCard},

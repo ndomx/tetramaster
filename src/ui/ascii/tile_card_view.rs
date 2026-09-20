@@ -4,7 +4,7 @@ use crate::{
     models::{card::Card, direction::Direction},
     ui::ascii::{
         ascii_view::AsciiView,
-        constants::{CARD_HEIGHT, CARD_WIDTH},
+        constants::{CARD_HEIGHT, CARD_INNER_WIDTH, CARD_WIDTH},
     },
 };
 
@@ -32,8 +32,7 @@ impl<'a> TileCardView<'a> {
             _ => {}
         });
 
-        let width = self.width();
-        format!("│{}{:^width$}{}│", northwest, north, northeast)
+        format!("│{}{:^CARD_INNER_WIDTH$}{}│", northwest, north, northeast)
     }
 
     fn mid_line(&self) -> String {
@@ -46,8 +45,12 @@ impl<'a> TileCardView<'a> {
             _ => {}
         });
 
-        let width = self.width();
-        format!("│{}{:^width$}{}│", west, self.card.format_stats(), east)
+        format!(
+            "│{}{:^CARD_INNER_WIDTH$}{}│",
+            west,
+            self.card.format_stats(),
+            east
+        )
     }
 
     fn bottom_line(&self) -> String {
@@ -62,12 +65,11 @@ impl<'a> TileCardView<'a> {
             _ => {}
         });
 
-        let width = self.width();
-        format!("│{southwest}{south:^width$}{southeast}│")
+        format!("│{southwest}{south:^CARD_INNER_WIDTH$}{southeast}│")
     }
 
     fn stats_line(&self) -> String {
-        format!("│ {:^CARD_WIDTH$} │", (self.card.asset.name))
+        format!("│ {:^CARD_INNER_WIDTH$} │", self.card.asset.name)
     }
 }
 

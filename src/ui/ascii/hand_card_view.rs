@@ -4,7 +4,7 @@ use crate::{
     models::{card::Card, direction::Direction},
     ui::ascii::{
         ascii_view::AsciiView,
-        constants::{CARD_HEIGHT, CARD_WIDTH},
+        constants::{CARD_HEIGHT, CARD_INNER_WIDTH, CARD_WIDTH},
     },
 };
 
@@ -29,8 +29,7 @@ impl<'a> HandCardView<'a> {
             _ => {}
         });
 
-        let width = self.width();
-        format!("│{northwest}{north:^width$}{northeast}│")
+        format!("│{northwest}{north:^CARD_INNER_WIDTH$}{northeast}│")
     }
 
     fn mid_line(&self) -> String {
@@ -43,8 +42,12 @@ impl<'a> HandCardView<'a> {
             _ => {}
         });
 
-        let width = self.width();
-        format!("│{}{:^width$}{}│", west, self.card.format_stats(), east)
+        format!(
+            "│{}{:^CARD_INNER_WIDTH$}{}│",
+            west,
+            self.card.format_stats(),
+            east
+        )
     }
 
     fn bottom_line(&self) -> String {
@@ -59,8 +62,11 @@ impl<'a> HandCardView<'a> {
             _ => {}
         });
 
-        let width = self.width();
-        format!("│{southwest}{south:^width$}{southeast}│")
+        format!("│{southwest}{south:^CARD_INNER_WIDTH$}{southeast}│")
+    }
+
+    fn stats_line(&self) -> String {
+        format!("│ {:^CARD_INNER_WIDTH$} │", self.card.asset.name)
     }
 }
 
@@ -78,7 +84,7 @@ impl<'a> AsciiView for HandCardView<'a> {
             0 => "┌─────────────┐".to_string(),
             1 => self.top_line(),
             2 => "│             │".to_string(),
-            3 => format!("│ {:^CARD_WIDTH$} │", self.card.asset.name),
+            3 => self.stats_line(),
             4 => self.mid_line(),
             5 => "│             │".to_string(),
             6 => "│             │".to_string(),

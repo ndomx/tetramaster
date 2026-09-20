@@ -10,9 +10,7 @@ use crossterm::{
 };
 
 use crate::{
-    models::{action::Action, card::Card, game::Game, position::Position},
-    ui::ascii::{ascii_view::AsciiView, board_view::BoardView, hand_card_view::HandCardView},
-    utils::constants::BOARD_SIZE,
+    models::{action::Action, card::Card, game::Game, position::Position}, ui::ascii::{ascii_view::AsciiView, board_view::BoardView, hand_card_view::HandCardView, score_view::ScoreView}, utils::constants::BOARD_SIZE,
 };
 
 pub struct Terminal {
@@ -28,8 +26,10 @@ impl Terminal {
         self.clear()?;
 
         let board_view = BoardView::new(game);
+        let score_view = ScoreView::new(game);
 
         board_view.render()?;
+        score_view.render()?;
         self.render_hand(&game.player.hand)?;
 
         Ok(())

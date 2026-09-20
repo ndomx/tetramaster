@@ -120,4 +120,15 @@ impl Board {
                 _ => None,
             })
     }
+
+    pub fn score(&self, owner_id: u64) -> usize {
+        self.tiles
+            .iter()
+            .filter_map(|t| match t {
+                Tile::Card(tile_card) => Some(tile_card),
+                _ => None,
+            })
+            .filter(|tc| tc.owner_id == owner_id)
+            .count()
+    }
 }

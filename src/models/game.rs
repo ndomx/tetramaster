@@ -9,7 +9,6 @@ use crate::{
     models::{
         action::Action, active_player::ActivePlayer, board::Board, card::Card,
         effect_instance::EffectInstance, game_state::GameState, player::Player, position::Position,
-        tile_card::TileCard,
     },
     utils::{constants::MAX_HAND_CARDS, random::VecRandomExt},
 };
@@ -68,6 +67,14 @@ impl<'a> Game<'a> {
 
     pub fn awaiting_input(&self) -> bool {
         self.state == GameState::StartTurn && self.active_player == ActivePlayer::Player
+    }
+
+    pub fn player_score(&self) -> usize {
+        self.board.score(self.player.id)
+    }
+
+    pub fn cpu_score(&self) -> usize {
+        self.board.score(self.cpu.id)
     }
 
     fn start_turn(&mut self) -> TurnResult {
@@ -203,7 +210,7 @@ impl<'a> Game<'a> {
 
         match result {
             AttackOutcome::Victory => self.on_victory(source_tc.owner_id, target_pos),
-            AttackOutcome::Defeat => self.on_defeat(target_tc.owner_id, source_pos)
+            AttackOutcome::Defeat => self.on_defeat(target_tc.owner_id, source_pos),
         }
     }
 
