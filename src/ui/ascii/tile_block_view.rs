@@ -2,7 +2,7 @@ use crossterm::style::{Color, Stylize};
 
 use crate::ui::ascii::{
     ascii_view::AsciiView,
-    constants::{CARD_HEIGHT, CARD_INNER_WIDTH, CARD_WIDTH},
+    constants::{CARD_HEIGHT, CARD_INNER_WIDTH, CARD_WIDTH, MAX_CARD_WRITABLE_IDX},
 };
 
 pub struct TileBlockView {}
@@ -22,7 +22,7 @@ impl AsciiView for TileBlockView {
         let bottom = "─".repeat(CARD_INNER_WIDTH);
         match line {
             0 => format!("┌{top}┐").on(Color::DarkGrey).to_string(),
-            1..=7 => format!("│{middle}│").on(Color::DarkGrey).to_string(),
+            1..=MAX_CARD_WRITABLE_IDX => format!("│{middle}│").on(Color::DarkGrey).to_string(),
             _ => format!("└{bottom}┘").on(Color::DarkGrey).to_string(),
         }
     }

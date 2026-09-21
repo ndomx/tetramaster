@@ -1,5 +1,6 @@
 use crate::ui::ascii::{
-    ascii_view::AsciiView, constants::{CARD_HEIGHT, CARD_INNER_WIDTH, CARD_WIDTH},
+    ascii_view::AsciiView,
+    constants::{CARD_HEIGHT, CARD_INNER_WIDTH, CARD_WIDTH, MAX_CARD_WRITABLE_IDX},
 };
 
 pub struct TileEmptyView {}
@@ -19,7 +20,7 @@ impl AsciiView for TileEmptyView {
         let bottom = "─".repeat(CARD_INNER_WIDTH);
         match line {
             0 => format!("┌{top}┐"),
-            1..=7 => format!("│{middle}│"),
+            1..=MAX_CARD_WRITABLE_IDX => format!("│{middle}│"),
             _ => format!("└{bottom}┘"),
         }
     }

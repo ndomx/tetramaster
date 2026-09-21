@@ -4,7 +4,9 @@ use crate::{
     models::{card::Card, direction::Direction},
     ui::ascii::{
         ascii_view::AsciiView,
-        constants::{CARD_CONTENT_SPACE, CARD_HEIGHT, CARD_INNER_WIDTH, CARD_WIDTH},
+        constants::{
+            CARD_CONTENT_SPACE, CARD_HEIGHT, CARD_INNER_WIDTH, CARD_WIDTH, MAX_CARD_WRITABLE_IDX,
+        },
     },
 };
 
@@ -90,9 +92,8 @@ impl<'a> AsciiView for HandCardView<'a> {
             2 => format!("│{middle}│"),
             3 => self.stats_line(),
             4 => self.mid_line(),
-            5 => format!("│{middle}│"),
-            6 => format!("│{middle}│"),
-            7 => self.bottom_line(),
+            5..MAX_CARD_WRITABLE_IDX => format!("│{middle}│"),
+            MAX_CARD_WRITABLE_IDX => self.bottom_line(),
             _ => format!("└{bottom}┘"),
         }
         .on_blue()
