@@ -3,7 +3,6 @@ use std::sync::LazyLock;
 use crate::{assets::card_record::CardRecord, models::card_asset::CardAsset};
 
 pub mod card_record;
-// pub mod cards;
 
 const CSV_FILE: &str = include_str!("./card_records.csv");
 
