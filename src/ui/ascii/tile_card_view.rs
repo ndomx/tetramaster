@@ -4,7 +4,7 @@ use crate::{
     models::{card::Card, direction::Direction},
     ui::ascii::{
         ascii_view::AsciiView,
-        constants::{CARD_HEIGHT, CARD_INNER_WIDTH, CARD_WIDTH},
+        constants::{CARD_CONTENT_SPACE, CARD_HEIGHT, CARD_INNER_WIDTH, CARD_WIDTH},
     },
 };
 
@@ -32,7 +32,7 @@ impl<'a> TileCardView<'a> {
             _ => {}
         });
 
-        format!("│{}{:^CARD_INNER_WIDTH$}{}│", northwest, north, northeast)
+        format!("│{}{:^CARD_CONTENT_SPACE$}{}│", northwest, north, northeast)
     }
 
     fn mid_line(&self) -> String {
@@ -46,7 +46,7 @@ impl<'a> TileCardView<'a> {
         });
 
         format!(
-            "│{}{:^CARD_INNER_WIDTH$}{}│",
+            "│{}{:^CARD_CONTENT_SPACE$}{}│",
             west,
             self.card.format_stats(),
             east
@@ -65,11 +65,11 @@ impl<'a> TileCardView<'a> {
             _ => {}
         });
 
-        format!("│{southwest}{south:^CARD_INNER_WIDTH$}{southeast}│")
+        format!("│{southwest}{south:^CARD_CONTENT_SPACE$}{southeast}│")
     }
 
     fn stats_line(&self) -> String {
-        format!("│ {:^CARD_INNER_WIDTH$} │", self.card.asset.name)
+        format!("│ {:^CARD_CONTENT_SPACE$} │", self.card.asset.name)
     }
 }
 
@@ -83,16 +83,20 @@ impl<'a> AsciiView for TileCardView<'a> {
     }
 
     fn line(&self, line: usize) -> String {
+        let top = "─".repeat(CARD_INNER_WIDTH);
+        let middle = " ".repeat(CARD_INNER_WIDTH);
+        let bottom = "─".repeat(CARD_INNER_WIDTH);
+
         match line {
-            0 => "┌─────────────┐".to_string(),
+            0 => format!("┌{top}┐"),
             1 => self.top_line(),
-            2 => "│             │".to_string(),
+            2 => format!("│{middle}│"),
             3 => self.stats_line(),
             4 => self.mid_line(),
-            5 => "│             │".to_string(),
-            6 => "│             │".to_string(),
+            5 => format!("│{middle}│"),
+            6 => format!("│{middle}│"),
             7 => self.bottom_line(),
-            _ => "└─────────────┘".to_string(),
+            _ => format!("└{bottom}┘"),
         }
         .on(self.back_color)
         .with(FRONT_COLOR)

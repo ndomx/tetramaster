@@ -1,10 +1,8 @@
 use crossterm::style::{Color, Stylize};
 
-use crate::{
-    ui::ascii::{
-        ascii_view::AsciiView,
-        constants::{CARD_HEIGHT, CARD_WIDTH},
-    },
+use crate::ui::ascii::{
+    ascii_view::AsciiView,
+    constants::{CARD_HEIGHT, CARD_INNER_WIDTH, CARD_WIDTH},
 };
 
 pub struct TileBlockView {}
@@ -19,16 +17,13 @@ impl AsciiView for TileBlockView {
     }
 
     fn line(&self, line: usize) -> String {
+        let top = "─".repeat(CARD_INNER_WIDTH);
+        let middle = " ".repeat(CARD_INNER_WIDTH);
+        let bottom = "─".repeat(CARD_INNER_WIDTH);
         match line {
-            0 => "┌─────────────┐".on(Color::Grey).to_string(),
-            1 => "│             │".on(Color::Grey).to_string(),
-            2 => "│             │".on(Color::Grey).to_string(),
-            3 => "│             │".on(Color::Grey).to_string(),
-            4 => "│             │".on(Color::Grey).to_string(),
-            5 => "│             │".on(Color::Grey).to_string(),
-            6 => "│             │".on(Color::Grey).to_string(),
-            7 => "│             │".on(Color::Grey).to_string(),
-            _ => "└─────────────┘".on(Color::Grey).to_string(),
+            0 => format!("┌{top}┐").on(Color::DarkGrey).to_string(),
+            1..=7 => format!("│{middle}│").on(Color::DarkGrey).to_string(),
+            _ => format!("└{bottom}┘").on(Color::DarkGrey).to_string(),
         }
     }
 }
