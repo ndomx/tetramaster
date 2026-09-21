@@ -70,7 +70,7 @@ impl<'a> TileCardView<'a> {
         format!("│{southwest}{south:^CARD_CONTENT_SPACE$}{southeast}│")
     }
 
-    fn stats_line(&self) -> String {
+    fn name_line(&self) -> String {
         format!("│ {:^CARD_CONTENT_SPACE$} │", self.card.asset.name)
     }
 }
@@ -92,10 +92,10 @@ impl<'a> AsciiView for TileCardView<'a> {
         match line {
             0 => format!("┌{top}┐"),
             1 => self.top_line(),
-            2 => format!("│{middle}│"),
-            3 => self.stats_line(),
-            4 => self.mid_line(),
-            5..MAX_CARD_WRITABLE_IDX => format!("│{middle}│"),
+            2..=5 => format!("│{middle}│"),
+            6 => self.name_line(),
+            7 => self.mid_line(),
+            8..MAX_CARD_WRITABLE_IDX => format!("│{middle}│"),
             MAX_CARD_WRITABLE_IDX => self.bottom_line(),
             _ => format!("└{bottom}┘"),
         }
