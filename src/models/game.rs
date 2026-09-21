@@ -1,7 +1,7 @@
 use rand::{Rng, RngExt, rngs::ThreadRng, seq::IndexedRandom};
 
 use crate::{
-    assets::cards::CARDS,
+    assets::CARDS,
     commands::{
         AttackOutcome, AttackParams, GenerateEffectsParams, attack, generate_effects,
         spread_victory_effects,
