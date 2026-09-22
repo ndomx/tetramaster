@@ -38,7 +38,7 @@ assets -> domain
 ```
 
 - `domain`: game data and small invariants, such as cards, positions, players,
-  placed cards, and board storage.
+  board cards, and board storage.
 - `rules`: pure operations for placement, combat, captures, and combos. These
   functions receive all inputs explicitly and do not print or read terminal input.
 - `game`: match/session orchestration, turn progression, active player, phase,
@@ -135,6 +135,22 @@ and `CardStats` contains the instance's rolled combat values. The catalog's base
 or limit stats may use the same value type, but fields should clearly distinguish
 definition limits from runtime values.
 
+### Board occupancy vocabulary
+
+Use distinct nouns for runtime cards and cards occupying the board, while keeping
+verbs for actions and events:
+
+- `Card` is a playable card instance, including while it is in a hand.
+- `BoardCard` is a card on the board together with its current owner.
+- `Tile` is `Empty`, `Blocked`, or `Occupied(BoardCard)`.
+- `GameAction::PlayCard` is the request that moves a card from a hand to the board.
+- `GameEvent::CardPlaced` reports the observable result of that action.
+
+This avoids the easily confused `PlacedCard` and `PlayedCard` terms. Domain names
+must describe game concepts independently of a particular frontend. TUI view
+names may use `CardTileView`, `BlockedTileView`, and `EmptyTileView`; the Dioxus
+frontend may instead represent all three states through `BoardCell`.
+
 ### Frontend integration contract
 
 The TUI is the first adapter for the same public contract that the Dioxus web app
@@ -224,7 +240,12 @@ Proposed naming changes:
 | --- | --- | --- |
 | `CardAsset` | `CardDefinition` | It is canonical game data rather than a presentation asset. |
 | `CardRecord` | `SerializedCardDefinition` | It is private deserialization plumbing and should not be named after a temporary storage format. |
-| `TileCard` | `PlacedCard` | Describes a card's role on the board. |
+| `TileCard` | `BoardCard` | Clearly distinguishes a card on the board from one in a hand. |
+| `Tile::Card` | `Tile::Occupied` | Describes the tile state while carrying a `BoardCard`. |
+| `Tile::Block` | `Tile::Blocked` | Uses a state adjective consistently with `Occupied`. |
+| `TileCardView` | `CardTileView` | Uses natural adjective-first presentation naming. |
+| `TileBlockView` | `BlockedTileView` | Describes the rendered tile state. |
+| `TileEmptyView` | `EmptyTileView` | Describes the rendered tile state. |
 | `Action` | `GameAction` | Defines the command type shared by every frontend and the AI. |
 | `EffectInstance` | `PendingEffect` | Describes an effect waiting to be resolved. |
 | `Effect::Capture` | `Effect::DirectCapture` | Separates uncontested capture from combat victory. |
