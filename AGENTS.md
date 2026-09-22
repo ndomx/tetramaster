@@ -4,7 +4,9 @@
 
 This is a Rust terminal implementation of Final Fantasy IX Tetra Master.
 
-- `src/main.rs` owns the executable loop and terminal orchestration.
+- `src/lib.rs` owns the shared crate module declarations.
+- `src/main.rs` owns the executable loop and terminal orchestration, importing
+  shared code through the library crate.
 - `src/models/` currently contains core game data and state-machine types.
 - `src/commands/` contains rule operations such as battle resolution and effect generation.
 - `src/ui/` contains terminal and ASCII rendering.
