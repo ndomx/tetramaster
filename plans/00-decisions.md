@@ -40,6 +40,16 @@ force until the human explicitly changes them.
 - Prefer `CardTileView`, `BlockedTileView`, and `EmptyTileView` for TUI rendering
   names. Dioxus may represent all tile states with `BoardCell`.
 
+### M1.03 Transitional Naming Decisions
+
+- Rename the existing placement-request struct from `Action` to `GameAction`
+  during M1.03, but do not turn it into the planned frontend-contract enum yet.
+  M1.09 must still settle and implement the public `GameAction::PlayCard` shape;
+  the M1.03 name alone does not make the current struct that contract.
+- Use the singular `available_position` for the current board method because it
+  randomly returns one `Option<Position>`. If a later rules or AI API exposes all
+  legal positions, that separate collection API may use a plural name.
+
 ## Frontend Contract
 
 - The TUI and Dioxus app must drive the engine through the same public contract.

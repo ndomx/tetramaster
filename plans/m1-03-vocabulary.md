@@ -19,11 +19,12 @@ Perform behavior-neutral renames so later agents work with stable domain terms.
 - `EffectInstance` -> `PendingEffect`
 - `Effect::Capture` -> `Effect::DirectCapture`
 - `GameState` -> `GamePhase`
-- `find_available` -> `available_positions`
+- `find_available` -> `available_position`
 - `find_placed_by_id` -> `position_of_card`
 
-The existing action may be renamed to the agreed `GameAction` shell only if that
-does not prematurely implement the M1.09 contract. Confirm this at kickoff.
+The existing action is renamed to `GameAction` as a struct without prematurely
+implementing the M1.09 enum contract. M1.09 must still settle the final public
+action shape.
 
 ## Scope
 

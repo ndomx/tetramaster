@@ -7,8 +7,8 @@ use crate::{
         spread_victory_effects,
     },
     models::{
-        action::Action, active_player::ActivePlayer, board::Board, card::Card,
-        effect_instance::EffectInstance, game_state::GameState, player::Player, position::Position,
+        action::GameAction, active_player::ActivePlayer, board::Board, card::Card,
+        game_phase::GamePhase, pending_effect::PendingEffect, player::Player, position::Position,
     },
     utils::{constants::MAX_HAND_CARDS, random::VecRandomExt},
 };
@@ -21,7 +21,7 @@ pub struct Game<'a> {
     pub board: Board,
     pub player: Player,
     pub cpu: Player,
-    pub state: GameState,
+    pub state: GamePhase,
     pub active_player: ActivePlayer,
     rng: &'a mut ThreadRng,
 }
@@ -38,32 +38,32 @@ impl<'a> Game<'a> {
             player,
             cpu,
             rng,
-            state: GameState::NotStarted,
+            state: GamePhase::NotStarted,
             active_player: ActivePlayer::None,
         }
     }
 
-    pub fn player_hand(&self) -> &Vec<Card> {
+    pub fn player_hand(&self) -> &[Card] {
         &self.player.hand
     }
 
     pub fn run(&mut self) -> TurnResult {
         match self.state {
-            GameState::NotStarted => self.start_game(),
-            GameState::StartTurn => self.start_turn(),
-            GameState::ApplyEffects { pending: _ } => self.apply_effects(),
-            GameState::EndTurn => self.end_turn(),
+            GamePhase::NotStarted => self.start_game(),
+            GamePhase::StartTurn => self.start_turn(),
+            GamePhase::ApplyEffects { pending: _ } => self.apply_effects(),
+            GamePhase::EndTurn => self.end_turn(),
             _ => Ok(()),
         }
     }
 
-    pub fn play_card(&mut self, action: Action) -> TurnResult {
+    pub fn play_card(&mut self, action: GameAction) -> TurnResult {
         self.player_turn(action)?;
         Ok(())
     }
 
     pub fn awaiting_input(&self) -> bool {
-        self.state == GameState::StartTurn && self.active_player == ActivePlayer::Player
+        self.state == GamePhase::StartTurn && self.active_player == ActivePlayer::Player
     }
 
     pub fn player_score(&self) -> usize {
@@ -81,34 +81,34 @@ impl<'a> Game<'a> {
 
         self.cpu_turn()?;
 
-        // self.state = GameState::ApplyEffects;
+        // self.state = GamePhase::ApplyEffects;
         Ok(())
     }
 
     fn apply_effects(&mut self) -> TurnResult {
-        let GameState::ApplyEffects { ref mut pending } = self.state else {
+        let GamePhase::ApplyEffects { ref mut pending } = self.state else {
             return Err("invalid state".to_string());
         };
 
-        let Some(effect_instance) = pending.pop_front() else {
-            self.state = GameState::EndTurn;
+        let Some(pending_effect) = pending.pop_front() else {
+            self.state = GamePhase::EndTurn;
             return Ok(());
         };
 
-        match effect_instance.effect {
-            Effect::Attack => self.attack(effect_instance),
-            Effect::Capture => self.capture(effect_instance),
+        match pending_effect.effect {
+            Effect::Attack => self.attack(pending_effect),
+            Effect::DirectCapture => self.capture(pending_effect),
         }
     }
 
     fn end_turn(&mut self) -> TurnResult {
         if self.board.count_empty() == 0 {
-            self.state = GameState::Finished;
+            self.state = GamePhase::Finished;
             return Ok(());
         }
 
         if self.player.hand.is_empty() && self.cpu.hand.is_empty() {
-            self.state = GameState::Finished;
+            self.state = GamePhase::Finished;
             return Ok(());
         }
 
@@ -118,7 +118,7 @@ impl<'a> Game<'a> {
             _ => return Err("Invalid active player".to_string()),
         };
 
-        self.state = GameState::StartTurn;
+        self.state = GamePhase::StartTurn;
 
         Ok(())
     }
@@ -138,7 +138,7 @@ impl<'a> Game<'a> {
         CARDS.sample(rng, MAX_HAND_CARDS).map(Card::new).collect()
     }
 
-    fn player_turn(&mut self, action: Action) -> TurnResult {
+    fn player_turn(&mut self, action: GameAction) -> TurnResult {
         if !self.board.is_available(action.target) {
             return Err("position is not available".to_string());
         }
@@ -154,7 +154,7 @@ impl<'a> Game<'a> {
     fn cpu_turn(&mut self) -> TurnResult {
         let target = self
             .board
-            .find_available(self.rng)
+            .available_position(self.rng)
             .ok_or("unable to find a position")?;
 
         let card = self
@@ -173,7 +173,7 @@ impl<'a> Game<'a> {
             board: &self.board,
         })?;
 
-        self.state = GameState::ApplyEffects { pending: effects };
+        self.state = GamePhase::ApplyEffects { pending: effects };
 
         Ok(())
     }
@@ -184,7 +184,7 @@ impl<'a> Game<'a> {
             false => ActivePlayer::Cpu,
         };
 
-        self.state = GameState::StartTurn;
+        self.state = GamePhase::StartTurn;
 
         Ok(())
     }
@@ -197,15 +197,15 @@ impl<'a> Game<'a> {
         }
     }
 
-    fn attack(&mut self, effect_instance: EffectInstance) -> TurnResult {
+    fn attack(&mut self, pending_effect: PendingEffect) -> TurnResult {
         let (source_tc, source_pos) = self
             .board
-            .find_placed_by_id(effect_instance.source_card_id)
+            .position_of_card(pending_effect.source_card_id)
             .ok_or("Cannot find source")?;
 
         let (target_tc, target_pos) = self
             .board
-            .find_placed_by_id(effect_instance.target_card_id)
+            .position_of_card(pending_effect.target_card_id)
             .ok_or("Cannot find target")?;
 
         let result = attack(AttackParams {
@@ -219,11 +219,11 @@ impl<'a> Game<'a> {
         }
     }
 
-    fn capture(&mut self, effect_instance: EffectInstance) -> TurnResult {
+    fn capture(&mut self, pending_effect: PendingEffect) -> TurnResult {
         let active_player = self.get_active_player()?;
         let (_, target) = self
             .board
-            .find_placed_by_id(effect_instance.target_card_id)
+            .position_of_card(pending_effect.target_card_id)
             .ok_or("Unable to find target")?;
 
         self.board.set_owner(target, active_player.id)?;
@@ -234,7 +234,7 @@ impl<'a> Game<'a> {
     fn on_victory(&mut self, owner_id: u64, pos: Position) -> TurnResult {
         self.board.set_owner(pos, owner_id)?;
 
-        let GameState::ApplyEffects { pending } = &mut self.state else {
+        let GamePhase::ApplyEffects { pending } = &mut self.state else {
             return Err("skip side effects".into());
         };
 
@@ -250,7 +250,7 @@ impl<'a> Game<'a> {
     }
 
     fn on_defeat(&mut self, owner_id: u64, pos: Position) -> TurnResult {
-        self.state = GameState::EndTurn;
+        self.state = GamePhase::EndTurn;
         self.board.set_owner(pos, owner_id)
     }
 }
@@ -259,7 +259,7 @@ impl<'a> Game<'a> {
 mod tests {
     use super::*;
     use crate::{
-        models::{battle_class::BattleClass, effect::Effect, tile::Tile, tile_card::TileCard},
+        models::{battle_class::BattleClass, board_card::BoardCard, effect::Effect, tile::Tile},
         test_support::{card, empty_tiles},
         utils::constants::MAX_HAND_CARDS,
     };
@@ -283,9 +283,9 @@ mod tests {
     fn game_start_selects_an_active_player_and_enters_start_turn() {
         let mut rng = rand::rng();
         let mut game = configured_game(&mut rng);
-        assert_eq!(game.state, GameState::NotStarted);
+        assert_eq!(game.state, GamePhase::NotStarted);
         game.run().unwrap();
-        assert_eq!(game.state, GameState::StartTurn);
+        assert_eq!(game.state, GamePhase::StartTurn);
         assert!(matches!(
             game.active_player,
             ActivePlayer::Player | ActivePlayer::Cpu
@@ -301,18 +301,18 @@ mod tests {
         let mut rng = rand::rng();
         let mut game = configured_game(&mut rng);
         game.active_player = ActivePlayer::Player;
-        game.state = GameState::StartTurn;
+        game.state = GamePhase::StartTurn;
         let mut tiles = empty_tiles();
-        tiles[0] = Tile::Block;
+        tiles[0] = Tile::Blocked;
         game.board = Board::from_tiles(tiles);
         let card_id = game.player.hand[0].id;
         let before = game.player.hand.len();
         assert!(
-            game.play_card(Action::new(card_id, Position::new(0, 0)))
+            game.play_card(GameAction::new(card_id, Position::new(0, 0)))
                 .is_err()
         );
         assert_eq!(game.player.hand.len(), before);
-        assert_eq!(game.state, GameState::StartTurn);
+        assert_eq!(game.state, GamePhase::StartTurn);
     }
 
     #[test]
@@ -320,19 +320,19 @@ mod tests {
         let mut rng = rand::rng();
         let mut game = configured_game(&mut rng);
         game.active_player = ActivePlayer::Player;
-        game.state = GameState::StartTurn;
+        game.state = GamePhase::StartTurn;
         let card_id = game.player.hand[0].id;
-        game.play_card(Action::new(card_id, Position::new(0, 0)))
+        game.play_card(GameAction::new(card_id, Position::new(0, 0)))
             .unwrap();
         assert_eq!(game.player.hand.len(), MAX_HAND_CARDS - 1);
         assert!(
-            matches!(game.state, GameState::ApplyEffects { ref pending } if pending.is_empty())
+            matches!(game.state, GamePhase::ApplyEffects { ref pending } if pending.is_empty())
         );
         assert_eq!(game.player_score(), 1);
         game.run().unwrap();
-        assert_eq!(game.state, GameState::EndTurn);
+        assert_eq!(game.state, GamePhase::EndTurn);
         game.run().unwrap();
-        assert_eq!(game.state, GameState::StartTurn);
+        assert_eq!(game.state, GamePhase::StartTurn);
         assert!(game.active_player == ActivePlayer::Cpu);
     }
 
@@ -341,11 +341,11 @@ mod tests {
         let mut rng = rand::rng();
         let mut game = configured_game(&mut rng);
         game.active_player = ActivePlayer::Cpu;
-        game.state = GameState::StartTurn;
+        game.state = GamePhase::StartTurn;
         game.run().unwrap();
         assert_eq!(game.cpu.hand.len(), MAX_HAND_CARDS - 1);
         assert_eq!(game.cpu_score(), 1);
-        assert!(matches!(game.state, GameState::ApplyEffects { .. }));
+        assert!(matches!(game.state, GamePhase::ApplyEffects { .. }));
     }
 
     #[test]
@@ -353,18 +353,18 @@ mod tests {
         let mut rng = rand::rng();
         let mut game = configured_game(&mut rng);
         let mut tiles = empty_tiles();
-        tiles[0] = Tile::Card(TileCard {
+        tiles[0] = Tile::Occupied(BoardCard {
             owner_id: 1,
             card: card(10, 0, BattleClass::Physical, 0, 0, 0),
         });
-        tiles[1] = Tile::Card(TileCard {
+        tiles[1] = Tile::Occupied(BoardCard {
             owner_id: 2,
             card: card(20, 0, BattleClass::Physical, 0, 0, 0),
         });
         game.board = Board::from_tiles(tiles);
         game.active_player = ActivePlayer::Player;
-        game.state = GameState::ApplyEffects {
-            pending: VecDeque::from([EffectInstance::new(10, 20, Effect::Capture)]),
+        game.state = GamePhase::ApplyEffects {
+            pending: VecDeque::from([PendingEffect::new(10, 20, Effect::DirectCapture)]),
         };
         game.run().unwrap();
         assert_eq!(
@@ -372,10 +372,10 @@ mod tests {
             1
         );
         assert!(
-            matches!(game.state, GameState::ApplyEffects { ref pending } if pending.is_empty())
+            matches!(game.state, GamePhase::ApplyEffects { ref pending } if pending.is_empty())
         );
         game.run().unwrap();
-        assert_eq!(game.state, GameState::EndTurn);
+        assert_eq!(game.state, GamePhase::EndTurn);
     }
 
     #[test]
@@ -383,11 +383,11 @@ mod tests {
         let mut rng = rand::rng();
         let mut game = configured_game(&mut rng);
         let mut tiles = empty_tiles();
-        tiles[0] = Tile::Card(TileCard {
+        tiles[0] = Tile::Occupied(BoardCard {
             owner_id: 1,
             card: card(10, 0, BattleClass::Physical, 0, 0, 0),
         });
-        tiles[1] = Tile::Card(TileCard {
+        tiles[1] = Tile::Occupied(BoardCard {
             owner_id: 2,
             card: card(
                 20,
@@ -398,12 +398,12 @@ mod tests {
                 0,
             ),
         });
-        tiles[2] = Tile::Card(TileCard {
+        tiles[2] = Tile::Occupied(BoardCard {
             owner_id: 2,
             card: card(30, 0, BattleClass::Physical, 0, 0, 0),
         });
         game.board = Board::from_tiles(tiles);
-        game.state = GameState::ApplyEffects {
+        game.state = GamePhase::ApplyEffects {
             pending: VecDeque::new(),
         };
         game.on_victory(1, Position::new(0, 1)).unwrap();
@@ -412,7 +412,7 @@ mod tests {
             1
         );
         assert!(
-            matches!(game.state, GameState::ApplyEffects { ref pending } if pending.front().is_some_and(|effect| effect.target_card_id == 30))
+            matches!(game.state, GamePhase::ApplyEffects { ref pending } if pending.front().is_some_and(|effect| effect.target_card_id == 30))
         );
 
         game.on_defeat(2, Position::new(0, 0)).unwrap();
@@ -420,21 +420,21 @@ mod tests {
             game.board.get_card(Position::new(0, 0)).unwrap().owner_id,
             2
         );
-        assert_eq!(game.state, GameState::EndTurn);
+        assert_eq!(game.state, GamePhase::EndTurn);
     }
 
     #[test]
     fn end_turn_finishes_for_full_board_or_two_empty_hands() {
         let mut rng = rand::rng();
         let mut game = configured_game(&mut rng);
-        game.state = GameState::EndTurn;
+        game.state = GamePhase::EndTurn;
         game.player.hand.clear();
         game.cpu.hand.clear();
         game.run().unwrap();
-        assert_eq!(game.state, GameState::Finished);
+        assert_eq!(game.state, GamePhase::Finished);
 
         let tiles = std::array::from_fn(|index| {
-            Tile::Card(TileCard {
+            Tile::Occupied(BoardCard {
                 owner_id: 1,
                 card: card(100 + index as u64, 0, BattleClass::Physical, 0, 0, 0),
             })
@@ -443,9 +443,9 @@ mod tests {
         game.player
             .hand
             .push(card(1, 0, BattleClass::Physical, 0, 0, 0));
-        game.state = GameState::EndTurn;
+        game.state = GamePhase::EndTurn;
         game.run().unwrap();
-        assert_eq!(game.state, GameState::Finished);
+        assert_eq!(game.state, GamePhase::Finished);
     }
 
     #[test]
@@ -453,16 +453,16 @@ mod tests {
         let mut rng = rand::rng();
         let mut game = configured_game(&mut rng);
         game.active_player = ActivePlayer::Player;
-        game.state = GameState::StartTurn;
+        game.state = GamePhase::StartTurn;
         let mut steps = 0;
-        while game.state != GameState::Finished {
+        while game.state != GamePhase::Finished {
             if game.awaiting_input() {
                 let card_id = game.player.hand[0].id;
                 let target = (0..16)
                     .filter_map(crate::utils::helpers::idx2pos)
                     .find(|position| game.board.is_available(*position))
                     .unwrap();
-                game.play_card(Action::new(card_id, target)).unwrap();
+                game.play_card(GameAction::new(card_id, target)).unwrap();
             } else {
                 game.run().unwrap();
             }
@@ -480,7 +480,7 @@ mod tests {
         let mut rng = rand::rng();
         let mut game = configured_game(&mut rng);
         assert!(
-            game.play_card(Action::new(999, Position::new(0, 0)))
+            game.play_card(GameAction::new(999, Position::new(0, 0)))
                 .is_err()
         );
         assert!(game.board.is_available(Position::new(0, 0)));

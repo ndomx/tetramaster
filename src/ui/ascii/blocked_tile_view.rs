@@ -5,9 +5,9 @@ use crate::ui::ascii::{
     constants::{CARD_HEIGHT, CARD_INNER_WIDTH, CARD_WIDTH, MAX_CARD_WRITABLE_IDX},
 };
 
-pub struct TileBlockView {}
+pub struct BlockedTileView {}
 
-impl AsciiView for TileBlockView {
+impl AsciiView for BlockedTileView {
     fn width(&self) -> usize {
         CARD_WIDTH
     }

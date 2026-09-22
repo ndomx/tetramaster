@@ -1,7 +1,7 @@
 use std::{io::stdout, thread::sleep, time::Duration};
 
 use tetramaster::{
-    models::{game::Game, game_state::GameState},
+    models::{game::Game, game_phase::GamePhase},
     ui::terminal::Terminal,
 };
 
@@ -11,7 +11,7 @@ fn main() {
 
     let mut terminal = Terminal::new(stdout());
 
-    while game.state != GameState::Finished {
+    while game.state != GamePhase::Finished {
         sleep(Duration::from_millis(500));
 
         terminal.render(&game).ok();

@@ -1,8 +1,8 @@
 use std::collections::VecDeque;
 
 use crate::models::{
-    board::Board, direction::Direction, effect::Effect, effect_instance::EffectInstance,
-    position::Position, tile_card::TileCard,
+    board::Board, board_card::BoardCard, direction::Direction, effect::Effect,
+    pending_effect::PendingEffect, position::Position,
 };
 
 pub struct GenerateEffectsParams<'a> {
@@ -12,7 +12,7 @@ pub struct GenerateEffectsParams<'a> {
 
 pub fn generate_effects<'a>(
     params: GenerateEffectsParams<'a>,
-) -> Result<VecDeque<EffectInstance>, String> {
+) -> Result<VecDeque<PendingEffect>, String> {
     let tc_ref = params
         .board
         .get_card(params.position)
@@ -25,7 +25,7 @@ pub fn generate_effects<'a>(
         tc_ref.card.facing(),
     );
 
-    let mut effects: Vec<EffectInstance> = neighbors
+    let mut effects: Vec<PendingEffect> = neighbors
         .iter()
         .map(|&(defender, dir)| build_challenger_effect(tc_ref.card.id, defender, dir))
         .collect();
@@ -36,7 +36,7 @@ pub fn generate_effects<'a>(
 
 pub fn spread_victory_effects<'a>(
     params: GenerateEffectsParams<'a>,
-    pending_effects: &'a mut VecDeque<EffectInstance>,
+    pending_effects: &'a mut VecDeque<PendingEffect>,
 ) -> Result<(), String> {
     let tc_ref = params
         .board
@@ -51,7 +51,7 @@ pub fn spread_victory_effects<'a>(
     );
 
     neighbors.iter().for_each(|&(defender, _)| {
-        let effect = EffectInstance::new(tc_ref.card.id, defender.card.id, Effect::Capture);
+        let effect = PendingEffect::new(tc_ref.card.id, defender.card.id, Effect::DirectCapture);
         pending_effects.retain(|eff| eff.target_card_id != defender.card.id);
         pending_effects.push_front(effect);
     });
@@ -64,7 +64,7 @@ fn scan_neighbors(
     ally_id: u64,
     position: Position,
     dirs: Vec<Direction>,
-) -> Vec<(&TileCard, Direction)> {
+) -> Vec<(&BoardCard, Direction)> {
     dirs.iter()
         .filter_map(|dir| board.get_relative(position, dir).map(|tc| (tc, *dir)))
         .filter(|(tc, _)| tc.owner_id != ally_id)
@@ -73,15 +73,15 @@ fn scan_neighbors(
 
 fn build_challenger_effect(
     source_card_id: u64,
-    defender: &TileCard,
+    defender: &BoardCard,
     dir: Direction,
-) -> EffectInstance {
+) -> PendingEffect {
     let effect = match defender.card.is_facing(dir.opposite()) {
         true => Effect::Attack,
-        false => Effect::Capture,
+        false => Effect::DirectCapture,
     };
 
-    EffectInstance::new(source_card_id, defender.card.id, effect)
+    PendingEffect::new(source_card_id, defender.card.id, effect)
 }
 
 #[cfg(test)]
@@ -89,15 +89,15 @@ mod tests {
     use super::*;
     use crate::{
         models::{
-            battle_class::BattleClass, board::Board, effect::Effect, tile::Tile,
-            tile_card::TileCard,
+            battle_class::BattleClass, board::Board, board_card::BoardCard, effect::Effect,
+            tile::Tile,
         },
         test_support::{card, empty_tiles},
         utils::helpers::pos2idx,
     };
 
     fn occupied(owner_id: u64, id: u64, arrows: u8) -> Tile {
-        Tile::Card(TileCard {
+        Tile::Occupied(BoardCard {
             owner_id,
             card: card(id, arrows, BattleClass::Physical, 0, 0, 0),
         })
@@ -146,7 +146,7 @@ mod tests {
         assert_eq!(effects[0].target_card_id, 30);
         assert_eq!(effects[0].effect, Effect::Attack);
         assert_eq!(effects[1].target_card_id, 20);
-        assert_eq!(effects[1].effect, Effect::Capture);
+        assert_eq!(effects[1].effect, Effect::DirectCapture);
     }
 
     #[test]
@@ -156,8 +156,8 @@ mod tests {
         tiles[pos2idx(Position::new(1, 2)).unwrap()] = occupied(2, 20, 1 << Direction::W as u8);
         let board = Board::from_tiles(tiles);
         let mut pending = VecDeque::from([
-            EffectInstance::new(99, 20, Effect::Attack),
-            EffectInstance::new(99, 30, Effect::Capture),
+            PendingEffect::new(99, 20, Effect::Attack),
+            PendingEffect::new(99, 30, Effect::DirectCapture),
         ]);
         spread_victory_effects(
             GenerateEffectsParams {
@@ -174,7 +174,7 @@ mod tests {
                 pending[0].target_card_id,
                 &pending[0].effect
             ),
-            (10, 20, &Effect::Capture)
+            (10, 20, &Effect::DirectCapture)
         );
         assert_eq!(pending[1].target_card_id, 30);
     }

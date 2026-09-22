@@ -10,7 +10,7 @@ use crossterm::{
 };
 
 use crate::{
-    models::{action::Action, card::Card, game::Game, position::Position},
+    models::{action::GameAction, card::Card, game::Game, position::Position},
     ui::ascii::{
         ascii_view::AsciiView, board_view::BoardView, hand_card_view::HandCardView,
         score_view::ScoreView,
@@ -40,7 +40,7 @@ impl Terminal {
         Ok(())
     }
 
-    pub fn read_action(&mut self, game: &Game) -> io::Result<Action> {
+    pub fn read_action(&mut self, game: &Game) -> io::Result<GameAction> {
         let hand = game.player_hand();
 
         self.prompt("select a card to play: ")?;
@@ -53,7 +53,7 @@ impl Terminal {
         self.prompt("select a col to play card: ")?;
         let col: usize = self.parse_input(|&v| v < BOARD_SIZE)?;
 
-        Ok(Action::new(card.id, Position::new(row, col)))
+        Ok(GameAction::new(card.id, Position::new(row, col)))
     }
 
     fn clear(&mut self) -> io::Result<()> {

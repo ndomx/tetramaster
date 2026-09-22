@@ -3,7 +3,7 @@ use std::fmt::Display;
 use rand::random;
 
 use crate::models::{
-    card_asset::CardAsset,
+    card_definition::CardDefinition,
     card_stats::CardStats,
     direction::Direction::{self},
 };
@@ -12,12 +12,12 @@ use crate::models::{
 pub struct Card {
     pub id: u64,
     pub arrows: u8,
-    pub asset: &'static CardAsset,
+    pub asset: &'static CardDefinition,
     pub stats: CardStats,
 }
 
 impl Card {
-    pub fn new(asset: &'static CardAsset) -> Self {
+    pub fn new(asset: &'static CardDefinition) -> Self {
         let arrows = random();
         let id = random();
 

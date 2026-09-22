@@ -1,14 +1,14 @@
 #[derive(PartialEq, Debug)]
 pub enum Effect {
     Attack,
-    Capture,
+    DirectCapture,
 }
 
 impl Effect {
     pub fn priority(&self) -> u8 {
         match self {
             Effect::Attack => 0,
-            Effect::Capture => 1,
+            Effect::DirectCapture => 1,
         }
     }
 }

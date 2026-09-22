@@ -1,15 +1,15 @@
 use crate::ui::ascii::{
     ascii_view::AsciiView,
+    blocked_tile_view::BlockedTileView,
+    card_tile_view::CardTileView,
     constants::{CARD_HEIGHT, CARD_WIDTH},
-    tile_block_view::TileBlockView,
-    tile_card_view::TileCardView,
-    tile_empty_view::TileEmptyView,
+    empty_tile_view::EmptyTileView,
 };
 
 pub enum TileView<'a> {
-    Empty(TileEmptyView),
-    Block(TileBlockView),
-    Card(TileCardView<'a>),
+    Empty(EmptyTileView),
+    Block(BlockedTileView),
+    Card(CardTileView<'a>),
 }
 
 impl<'a> AsciiView for TileView<'a> {
