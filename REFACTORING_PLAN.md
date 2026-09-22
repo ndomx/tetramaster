@@ -11,13 +11,17 @@ responsibility at a time, and keep the game playable after every step.
 - Make randomness deterministic in tests.
 - Use consistent Tetra Master vocabulary throughout the codebase.
 - Remove unused APIs and accidental complexity.
-- Keep terminal rendering and input separate from game decisions.
+- Keep all frontend rendering and input separate from game decisions.
+- Give the terminal and future web frontends the same action, event, state, and
+  error contract.
+- Keep the shared game library compatible with the browser's WebAssembly target.
 
 ## Non-goals
 
 - Rewriting the game from scratch.
 - Changing game balance or rules during structural work.
-- Adding a GUI, networking, persistence, or a large framework.
+- Adding Dioxus or writing RSX components during the current refactor milestone.
+- Adding a backend, SSR, networking, persistence, or mobile application.
 - Generalizing the engine for unrelated card games.
 
 ## Target Responsibilities
@@ -25,12 +29,12 @@ responsibility at a time, and keep the game playable after every step.
 The intended dependency direction is:
 
 ```text
-main -> game session -> rules -> domain
-  |          |            |
-  +--------> UI <----- outcomes/events
+TUI adapter ---------------\
+                            +-> frontend contract -> game session -> rules -> domain
+future Dioxus web adapter -/                            |
+                                                         +-> AI
 
 assets -> domain
-AI ----> legal game actions
 ```
 
 - `domain`: game data and small invariants, such as cards, positions, players,
@@ -38,19 +42,22 @@ AI ----> legal game actions
 - `rules`: pure operations for placement, combat, captures, and combos. These
   functions receive all inputs explicitly and do not print or read terminal input.
 - `game`: match/session orchestration, turn progression, active player, phase,
-  scores, and applying rule outcomes.
+  scores, applying rule outcomes, and the frontend-neutral integration contract.
 - `ai`: CPU move selection only. It chooses from legal actions but does not apply
   them.
-- `ui`: terminal input and ASCII presentation. It translates user input into game
-  actions and renders state and events.
+- `tui`: terminal input and ASCII presentation. It translates terminal input into
+  shared game actions and renders shared snapshots and events.
+- `web_ui`: Dioxus components added only in the later web milestone. They use the
+  same contract as the TUI.
 - `assets`: loading and validation of the embedded, read-only card catalog.
 
 A likely end-state layout is:
 
 ```text
 src/
-  main.rs
   lib.rs
+  bin/
+    tui.rs
   domain/
     board.rs
     card.rs
@@ -64,15 +71,20 @@ src/
   game/
     action.rs
     event.rs
+    interaction.rs
     session.rs
+    snapshot.rs
     state.rs
   ai/
     mod.rs
     random.rs
   assets/
     catalog.rs
-  ui/
+  tui/
 ```
+
+The Dioxus milestone later adds `src/bin/web.rs` and `src/web_ui/`; it does not
+replace or fork the game library.
 
 This is a direction, not a requirement to create every module immediately. A
 module should exist only when it has a distinct responsibility and enough code to
@@ -105,7 +117,55 @@ and `CardStats` contains the instance's rolled combat values. The catalog's base
 or limit stats may use the same value type, but fields should clearly distinguish
 definition limits from runtime values.
 
-## Work Plan
+### Frontend integration contract
+
+The TUI is the first adapter for the same public contract that the Dioxus web app
+will use later. There must not be separate terminal and web paths through the
+game engine.
+
+The contract consists of:
+
+- `GameAction`: a request submitted to the session, initially including
+  `PlayCard { card_id, position }`. The player and AI select from the same legal
+  action representation.
+- `GameEvent`: an immutable description of an observable result, such as a game
+  or turn starting, a card being placed, combat resolving, ownership changing,
+  or the game finishing. Internal pending effects are not UI events.
+- `InteractionState`: tells an adapter whether the session is
+  `AwaitingPlayerAction`, `Advancing`, or `Finished`.
+- `GameSnapshot`: a read-only, frontend-neutral projection containing everything
+  needed to render the board, the player's visible hand, the opponent's hand
+  count, ownership, scores, phase, and legal choices. It must not reveal hidden
+  information or expose mutable board or player internals.
+- `GameError`: typed invalid-action and invalid-state failures that adapters can
+  present without terminating.
+
+`GameSession` should expose a small integration API along these lines:
+
+```text
+snapshot() -> GameSnapshot
+interaction() -> InteractionState
+legal_actions() -> collection of GameAction
+dispatch(GameAction) -> Result<Vec<GameEvent>, GameError>
+advance() -> Result<Vec<GameEvent>, GameError>
+```
+
+Both adapters follow the same sequence:
+
+```text
+render snapshot and newly emitted events
+    |
+    +-- AwaitingPlayerAction -> collect one action -> dispatch
+    +-- Advancing ----------> optionally pace presentation -> advance
+    +-- Finished -----------> render the result and stop
+```
+
+The TUI may block while collecting input and may use `thread::sleep` for pacing.
+The web adapter will use event handlers and asynchronous timing. Those are adapter
+details; neither belongs in `GameSession`. Adapters must not call rule functions,
+mutate the board directly, choose CPU moves, or infer state transitions.
+
+## Milestone 1: Engine Refactor and Frontend Preparation
 
 ### Step 0: Record the plan
 
@@ -146,7 +206,7 @@ Proposed naming changes:
 | `CardAsset` | `CardDefinition` | It is canonical game data rather than a presentation asset. |
 | `CardRecord` | `CsvCardRecord` | It is private deserialization plumbing for the embedded CSV. |
 | `TileCard` | `PlacedCard` | Describes a card's role on the board. |
-| `Action` | `PlayCardAction` | Distinguishes a player move from internal effects. |
+| `Action` | `GameAction` | Defines the command type shared by every frontend and the AI. |
 | `EffectInstance` | `PendingEffect` | Describes an effect waiting to be resolved. |
 | `Effect::Capture` | `Effect::DirectCapture` | Separates uncontested capture from combat victory. |
 | `GameState` | `GamePhase` | The type represents a phase in the match lifecycle. |
@@ -182,12 +242,14 @@ messages.
 - [ ] Rename or replace `Game` with `GameSession` once its role is narrow enough.
 - [ ] Keep ownership of the board, hands, phase, active player, and match history in
   the session layer.
-- [ ] Route player and CPU moves through the same validated action API.
+- [ ] Route player and CPU moves through the same validated `GameAction` API.
 - [ ] Have the session apply rule outcomes and advance the turn explicitly.
 - [ ] Model illegal moves with a typed error such as `GameError` rather than
   `Result<T, String>`.
-- [ ] Represent observable results as values such as `CombatOutcome` and
-  `GameEvent` so the UI can render them.
+- [ ] Return ordered `GameEvent` values for every observable state change.
+- [ ] Separate internal effect scheduling from events exposed to frontends.
+- [ ] Expose legal actions so frontends and the AI do not recreate placement
+  rules.
 
 The session should answer “what happens next?” while the rule modules answer “is
 this move legal?” and “what does this interaction produce?”
@@ -195,9 +257,12 @@ this move legal?” and “what does this interaction produce?”
 ### Step 5: Centralize randomness
 
 - [ ] Remove global random calls from card generation and combat.
-- [ ] Pass an RNG into operations that need it, or give the session one owned RNG.
+- [ ] Give the session an owned, seedable RNG; do not retain a borrowed
+  `ThreadRng` or expose a concrete RNG type in the frontend API.
 - [ ] Pass the same randomness boundary to CPU move selection.
 - [ ] Use seeded RNGs in tests so failures are reproducible.
+- [ ] Let each executable obtain a platform-appropriate seed when starting a new
+  session.
 - [ ] Verify zero-valued stat ranges and whether generated ranges should include
   their upper bound.
 
@@ -209,18 +274,107 @@ type does not need to leak through every model type.
 - [ ] Move CPU move selection out of the session and into `ai`.
 - [ ] Give the AI a read-only game view plus a set of legal actions.
 - [ ] Remove all `println!` calls from domain and rule modules.
-- [ ] Let the terminal layer render returned events and outcomes.
+- [ ] Keep colors, timing, formatted terminal lines, and I/O out of the shared
+  library.
 - [ ] Consolidate duplicated card-line rendering shared by hand and board views.
 - [ ] Simplify UI lifetimes after the session no longer stores a borrowed RNG.
 
-### Step 7: Final cleanup
+### Step 7: Establish the shared frontend contract
+
+- [ ] Add `GameAction`, `GameEvent`, `InteractionState`, `GameSnapshot`, and
+  `GameError` as frontend-neutral types.
+- [ ] Implement `snapshot`, `interaction`, `legal_actions`, `dispatch`, and
+  `advance` on `GameSession`.
+- [ ] Ensure every successful dispatch or advance emits events in a deterministic
+  order.
+- [ ] Include ownership as a domain side/player concept in snapshots rather than
+  requiring frontends to compare raw player IDs.
+- [ ] Keep selection, hover state, animation progress, and presentation delays out
+  of snapshots.
+- [ ] Add integration tests that drive a seeded session entirely through the
+  public contract until it finishes.
+- [ ] Test invalid actions through the same contract and verify that they do not
+  partially mutate the session.
+
+### Step 8: Adapt and preserve the TUI
+
+- [ ] Move the terminal entry point to `src/bin/tui.rs` and terminal presentation
+  to `src/tui/`.
+- [ ] Make Crossterm an optional, TUI-only dependency so it is not compiled into
+  the browser target.
+- [ ] Render only `GameSnapshot` and `GameEvent` values; do not read `GameSession`
+  fields directly.
+- [ ] Convert terminal input into a complete `GameAction` and submit it through
+  `dispatch`.
+- [ ] Use `InteractionState` to decide whether to prompt, call `advance`, or show
+  the final result.
+- [ ] Keep terminal blocking and optional sleeps inside the TUI adapter.
+- [ ] Display `GameError` values and retry input instead of unwrapping or silently
+  discarding errors.
+- [ ] Keep the current ASCII presentation functional without requiring a broader
+  TUI redesign.
+
+At the end of this step, the TUI must demonstrate the exact action/event loop the
+future Dioxus app will use. Only the mechanism for receiving input, scheduling
+automatic advancement, and drawing output should differ.
+
+### Step 9: Verify portability and finish the refactor
 
 - [ ] Review visibility and keep internal types and methods private where possible.
 - [ ] Remove empty utility abstractions and relocate helpers beside their callers.
+- [ ] Verify the shared library with
+  `cargo check --lib --target wasm32-unknown-unknown`.
 - [ ] Run `cargo fmt`, `cargo test`, and
   `cargo clippy --all-targets -- -D warnings`.
 - [ ] Update `README.md` and `AGENTS.md` to match the final layout.
 - [ ] Record any intentional rule deviations from Final Fantasy IX.
+
+## Milestone 2: Dioxus Web Frontend
+
+This milestone starts only after Milestone 1 is complete. It consumes the shared
+contract without adding web-specific branches to the engine.
+
+### Step 10: Add the browser application
+
+- [ ] Add Dioxus with its web feature and create `src/bin/web.rs`.
+- [ ] Add `src/web_ui/` for RSX components, styles, and browser-only presentation
+  state.
+- [ ] Configure a client-rendered web build. Do not add Fullstack, SSR, a backend,
+  mobile targets, or routing unless a later feature requires them.
+- [ ] Keep Dioxus types, signals, callbacks, and asynchronous timers out of the
+  shared game library.
+
+### Step 11: Build the RSX component tree
+
+- [ ] Implement `GameApp`, `Score`, `Board`, `BoardCell`, `Card`, `Hand`,
+  `GameStatus`, and `GameOverDialog` components.
+- [ ] Use one reusable card component for cards in the hand and on the board.
+- [ ] Keep the board at a stable 4x4 layout and visibly distinguish blocked,
+  empty, occupied, selected, legal, and contested cells.
+- [ ] Communicate ownership with more than color alone.
+- [ ] Support desktop browser widths and keyboard-accessible controls; mobile
+  layouts are not a project target.
+
+### Step 12: Connect Dioxus to the engine
+
+- [ ] Store `GameSession` in Dioxus state without changing its public API.
+- [ ] Keep selected card, hover state, modal state, and animation progress as web
+  presentation state.
+- [ ] Derive enabled cards and board cells from `legal_actions`.
+- [ ] Submit clicks as `GameAction` values through `dispatch`.
+- [ ] Render returned `GameEvent` values and asynchronously call `advance` while
+  the interaction state is `Advancing`.
+- [ ] Handle `GameError` without panicking or losing the current session.
+- [ ] Add web-facing tests for selection and dispatch wiring, then verify a full
+  playable match in a desktop browser.
+
+### Step 13: Decide whether to retain the TUI
+
+- [ ] Keep the TUI as an optional binary if its dependency and maintenance cost
+  remain small.
+- [ ] Confirm both frontends still consume the same public contract.
+- [ ] Remove the TUI only as a deliberate follow-up decision, not as part of the
+  web implementation.
 
 ## Decisions Needed
 
@@ -235,14 +389,24 @@ initial characterization tests:
 - Whether each playable `Card` needs a unique runtime identifier; multiple cards
   may always reference the same `CardDefinition`.
 
-## Completion Criteria
+## Milestone 1 Completion Criteria
 
-The refactor is complete when:
+The engine refactor and frontend preparation are complete when:
 
 - game rules can be exercised through tests without terminal I/O;
 - all random behavior can be reproduced with a seed;
 - the session coordinates rules but does not implement combat, capture, or AI;
-- UI modules do not decide game outcomes;
+- the public frontend contract is the only way the TUI drives the session;
+- the TUI remains fully playable using snapshots, actions, events, interaction
+  state, and typed errors;
+- automatic progression is driven through `advance` rather than polling or
+  inferred by the adapter;
+- frontend modules do not decide game outcomes or mutate game internals;
+- the shared library compiles for `wasm32-unknown-unknown` without Crossterm;
 - illegal states and moves have explicit representations;
 - names consistently reflect the game's domain; and
 - the full format, test, and lint checks pass.
+
+Milestone 2 is complete when the Dioxus web app is fully playable through that
+same contract, all web-only state remains in `web_ui`, and retaining or removing
+the optional TUI has been decided explicitly.
