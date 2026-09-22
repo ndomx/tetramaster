@@ -85,3 +85,24 @@ cargo run
 ```
 
 Running the test suite twice is intentional while ambient randomness still exists.
+
+## Completion Record
+
+Completed with 28 tests covering the agreed behavior matrix. Test-only fixtures
+provide deterministic cards and boards, and a test-only combat roll hook covers
+guaranteed victory, defeat, tie, and battle-class defense selection without
+changing the production RNG API.
+
+Characterized suspicious current behavior:
+
+- `Board::place_card` overwrites blocked and occupied tiles; placement rejection
+  currently belongs to the `Game` layer.
+- Combat ties are defeats.
+- A defeated challenger changes ownership and immediately ends effect processing.
+
+Deferred risks:
+
+- Exact generated-stat, starting-player, CPU-choice, and combat-roll sequences
+  remain untested until M1.07 centralizes injectable randomness.
+- Final-score tie handling remains inline in the interactive binary and treats a
+  tie as a CPU win; its public result representation is deferred to M1.09.

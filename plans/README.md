@@ -58,7 +58,7 @@ Dioxus, platform features, and separate binaries.
 
 ### Milestone 1: Engine Refactor
 
-- [ ] [M1.01 - Lock current behavior with comprehensive tests](m1-01-comprehensive-tests.md)
+- [x] [M1.01 - Lock current behavior with comprehensive tests](m1-01-comprehensive-tests.md)
 - [ ] [M1.02 - Establish the library boundary](m1-02-library-boundary.md)
 - [ ] [M1.03 - Apply agreed vocabulary](m1-03-vocabulary.md)
 - [ ] [M1.04 - Separate domain and board responsibilities](m1-04-domain-board.md)

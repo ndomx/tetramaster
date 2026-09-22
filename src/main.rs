@@ -11,6 +11,9 @@ mod models;
 mod ui;
 mod utils;
 
+#[cfg(test)]
+mod test_support;
+
 fn main() {
     let mut rng = rand::rng();
     let mut game = Game::new(0.25, &mut rng);
@@ -36,8 +39,8 @@ fn main() {
 
     let winner = match player_score > cpu_score {
         true => game.player,
-        false => game.cpu
+        false => game.cpu,
     };
 
-    println!("Winner: {} !!", {winner.name});
+    println!("Winner: {} !!", { winner.name });
 }

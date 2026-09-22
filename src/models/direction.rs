@@ -42,3 +42,17 @@ impl TryFrom<u8> for Direction {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn numeric_mapping_and_opposites_cover_all_eight_directions() {
+        for value in 0..8 {
+            let direction = Direction::try_from(value).unwrap();
+            assert_eq!(direction.opposite().opposite(), direction);
+        }
+        assert!(Direction::try_from(8).is_err());
+    }
+}

@@ -139,3 +139,83 @@ impl Board {
             .count()
     }
 }
+
+#[cfg(test)]
+impl Board {
+    pub(crate) fn from_tiles(tiles: [Tile; TILE_TOTAL]) -> Self {
+        Self { tiles }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{
+        models::{battle_class::BattleClass, tile::Tile},
+        test_support::{card, empty_tiles},
+    };
+
+    #[test]
+    fn construction_lookup_rows_and_counts_distinguish_tile_states() {
+        let mut rng = rand::rng();
+        let empty = Board::build(0.0, &mut rng);
+        assert_eq!(empty.count_empty(), TILE_TOTAL);
+        assert_eq!(empty.row(0).len(), BOARD_SIZE);
+        assert!(empty.row(BOARD_SIZE).is_empty());
+
+        let blocked = Board::build(1.0, &mut rng);
+        assert_eq!(blocked.count_empty(), 0);
+        assert!(matches!(
+            blocked.get(Position::new(0, 0)),
+            Some(Tile::Block)
+        ));
+        assert!(blocked.get(Position::new(BOARD_SIZE, 0)).is_none());
+    }
+
+    #[test]
+    fn placement_lookup_ownership_scores_and_identity_are_observable() {
+        let mut board = Board::from_tiles(empty_tiles());
+        board
+            .place_card(
+                card(7, 0, BattleClass::Physical, 1, 2, 3),
+                Position::new(1, 2),
+                10,
+            )
+            .unwrap();
+
+        assert!(!board.is_available(Position::new(1, 2)));
+        assert_eq!(board.count_empty(), TILE_TOTAL - 1);
+        assert_eq!(board.score(10), 1);
+        let (placed, pos) = board.find_placed_by_id(7).unwrap();
+        assert_eq!((pos.row, pos.col, placed.owner_id), (1, 2, 10));
+
+        board.set_owner(Position::new(1, 2), 20).unwrap();
+        assert_eq!(board.score(10), 0);
+        assert_eq!(board.score(20), 1);
+        assert!(board.set_owner(Position::new(0, 0), 20).is_err());
+        assert!(
+            board
+                .place_card(
+                    card(8, 0, BattleClass::Physical, 0, 0, 0),
+                    Position::new(4, 0),
+                    1
+                )
+                .is_err()
+        );
+    }
+
+    #[test]
+    fn current_low_level_placement_overwrites_non_empty_tiles() {
+        let mut tiles = empty_tiles();
+        tiles[0] = Tile::Block;
+        let mut board = Board::from_tiles(tiles);
+        board
+            .place_card(
+                card(1, 0, BattleClass::Physical, 0, 0, 0),
+                Position::new(0, 0),
+                9,
+            )
+            .unwrap();
+        assert!(board.get_card(Position::new(0, 0)).is_some());
+    }
+}

@@ -83,3 +83,99 @@ fn build_challenger_effect(
 
     EffectInstance::new(source_card_id, defender.card.id, effect)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{
+        models::{
+            battle_class::BattleClass, board::Board, effect::Effect, tile::Tile,
+            tile_card::TileCard,
+        },
+        test_support::{card, empty_tiles},
+        utils::helpers::pos2idx,
+    };
+
+    fn occupied(owner_id: u64, id: u64, arrows: u8) -> Tile {
+        Tile::Card(TileCard {
+            owner_id,
+            card: card(id, arrows, BattleClass::Physical, 0, 0, 0),
+        })
+    }
+
+    #[test]
+    fn no_arrows_or_only_allied_neighbors_generate_no_effects() {
+        let mut tiles = empty_tiles();
+        tiles[pos2idx(Position::new(1, 1)).unwrap()] = occupied(1, 1, 0);
+        tiles[pos2idx(Position::new(1, 2)).unwrap()] = occupied(2, 2, 0);
+        assert!(
+            generate_effects(GenerateEffectsParams {
+                position: Position::new(1, 1),
+                board: &Board::from_tiles(tiles)
+            })
+            .unwrap()
+            .is_empty()
+        );
+
+        let mut tiles = empty_tiles();
+        tiles[pos2idx(Position::new(1, 1)).unwrap()] = occupied(1, 1, 1 << Direction::E as u8);
+        tiles[pos2idx(Position::new(1, 2)).unwrap()] = occupied(1, 2, 0);
+        assert!(
+            generate_effects(GenerateEffectsParams {
+                position: Position::new(1, 1),
+                board: &Board::from_tiles(tiles)
+            })
+            .unwrap()
+            .is_empty()
+        );
+    }
+
+    #[test]
+    fn direct_capture_and_opposed_arrow_attack_are_prioritized() {
+        let mut tiles = empty_tiles();
+        let center_arrows = (1 << Direction::N as u8) | (1 << Direction::E as u8);
+        tiles[pos2idx(Position::new(1, 1)).unwrap()] = occupied(1, 10, center_arrows);
+        tiles[pos2idx(Position::new(0, 1)).unwrap()] = occupied(2, 20, 0);
+        tiles[pos2idx(Position::new(1, 2)).unwrap()] = occupied(2, 30, 1 << Direction::W as u8);
+        let effects = generate_effects(GenerateEffectsParams {
+            position: Position::new(1, 1),
+            board: &Board::from_tiles(tiles),
+        })
+        .unwrap();
+        assert_eq!(effects.len(), 2);
+        assert_eq!(effects[0].target_card_id, 30);
+        assert_eq!(effects[0].effect, Effect::Attack);
+        assert_eq!(effects[1].target_card_id, 20);
+        assert_eq!(effects[1].effect, Effect::Capture);
+    }
+
+    #[test]
+    fn victory_spread_prepends_captures_and_removes_existing_target_effects() {
+        let mut tiles = empty_tiles();
+        tiles[pos2idx(Position::new(1, 1)).unwrap()] = occupied(1, 10, 1 << Direction::E as u8);
+        tiles[pos2idx(Position::new(1, 2)).unwrap()] = occupied(2, 20, 1 << Direction::W as u8);
+        let board = Board::from_tiles(tiles);
+        let mut pending = VecDeque::from([
+            EffectInstance::new(99, 20, Effect::Attack),
+            EffectInstance::new(99, 30, Effect::Capture),
+        ]);
+        spread_victory_effects(
+            GenerateEffectsParams {
+                position: Position::new(1, 1),
+                board: &board,
+            },
+            &mut pending,
+        )
+        .unwrap();
+        assert_eq!(pending.len(), 2);
+        assert_eq!(
+            (
+                pending[0].source_card_id,
+                pending[0].target_card_id,
+                &pending[0].effect
+            ),
+            (10, 20, &Effect::Capture)
+        );
+        assert_eq!(pending[1].target_card_id, 30);
+    }
+}

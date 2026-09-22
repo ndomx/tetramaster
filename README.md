@@ -1,5 +1,7 @@
 # Tetra Master
 
+[![CI](https://github.com/ndomx/tetramaster/actions/workflows/ci.yml/badge.svg)](https://github.com/ndomx/tetramaster/actions/workflows/ci.yml)
+
 A terminal Rust implementation of Final Fantasy IX's Tetra Master.
 
 The game deals five cards to each side, renders a 4x4 board, and resolves captures through arrows, attack/defense stats, battle classes, and combo-style victory effects.

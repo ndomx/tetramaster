@@ -24,3 +24,25 @@ impl CardStats {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn generated_stats_preserve_class_and_stay_below_current_exclusive_bounds() {
+        let base = CardStats {
+            attack: 16,
+            battle_class: BattleClass::Magic,
+            phys_defense: 32,
+            mag_defense: 48,
+        };
+        for _ in 0..100 {
+            let generated = CardStats::generate(&base);
+            assert_eq!(generated.battle_class, BattleClass::Magic);
+            assert!(generated.attack < base.attack);
+            assert!(generated.phys_defense < base.phys_defense);
+            assert!(generated.mag_defense < base.mag_defense);
+        }
+    }
+}

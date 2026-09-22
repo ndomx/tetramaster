@@ -37,7 +37,16 @@ fn attack_value(card: &Card) -> u8 {
 }
 
 fn defense_value(card: &Card, battle_class: BattleClass) -> u8 {
-    let def_stat = match battle_class {
+    let def_stat = defense_stat(card, battle_class);
+
+    let def_pwr = def_stat + rand::random_range(0..16u8);
+    let def_penalty = rand::random_range(0..=def_pwr);
+
+    def_pwr.saturating_sub(def_penalty)
+}
+
+fn defense_stat(card: &Card, battle_class: BattleClass) -> u8 {
+    match battle_class {
         BattleClass::Physical => card.stats.phys_defense,
         BattleClass::Magic => card.stats.mag_defense,
         BattleClass::Flexible => {
@@ -48,10 +57,115 @@ fn defense_value(card: &Card, battle_class: BattleClass) -> u8 {
             card.stats.mag_defense,
             card.stats.attack
         ),
-    };
+    }
+}
 
-    let def_pwr = def_stat + rand::random_range(0..16u8);
-    let def_penalty = rand::random_range(0..=def_pwr);
+#[cfg(test)]
+fn attack_with_rolls(
+    params: AttackParams<'_>,
+    attack_bonus: u8,
+    attack_penalty: u8,
+    defense_bonus: u8,
+    defense_penalty: u8,
+) -> AttackOutcome {
+    let attack_power = params.attacker.stats.attack + attack_bonus;
+    let defense_stat = defense_stat(params.defender, params.attacker.stats.battle_class);
+    let defense_power = defense_stat + defense_bonus;
+    if attack_power.saturating_sub(attack_penalty) > defense_power.saturating_sub(defense_penalty) {
+        AttackOutcome::Victory
+    } else {
+        AttackOutcome::Defeat
+    }
+}
 
-    def_pwr.saturating_sub(def_penalty)
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::test_support::card;
+
+    #[test]
+    fn each_battle_class_selects_the_current_defense_stat() {
+        let defender = card(2, 0, BattleClass::Physical, 5, 30, 20);
+        let cases = [
+            (BattleClass::Physical, 30),
+            (BattleClass::Magic, 20),
+            (BattleClass::Flexible, 20),
+            (BattleClass::Assault, 5),
+        ];
+        for (class, selected_defense) in cases {
+            let tied = card(1, 0, class, selected_defense, 0, 0);
+            assert!(matches!(
+                attack_with_rolls(
+                    AttackParams {
+                        attacker: &tied,
+                        defender: &defender
+                    },
+                    0,
+                    0,
+                    0,
+                    0
+                ),
+                AttackOutcome::Defeat
+            ));
+            let winner = card(1, 0, class, selected_defense + 1, 0, 0);
+            assert!(matches!(
+                attack_with_rolls(
+                    AttackParams {
+                        attacker: &winner,
+                        defender: &defender
+                    },
+                    0,
+                    0,
+                    0,
+                    0
+                ),
+                AttackOutcome::Victory
+            ));
+        }
+    }
+
+    #[test]
+    fn deterministic_roll_hook_covers_victory_defeat_and_tie_as_defeat() {
+        let attacker = card(1, 0, BattleClass::Physical, 20, 0, 0);
+        let defender = card(2, 0, BattleClass::Physical, 0, 10, 0);
+        assert!(matches!(
+            attack_with_rolls(
+                AttackParams {
+                    attacker: &attacker,
+                    defender: &defender
+                },
+                0,
+                0,
+                0,
+                0
+            ),
+            AttackOutcome::Victory
+        ));
+        assert!(matches!(
+            attack_with_rolls(
+                AttackParams {
+                    attacker: &attacker,
+                    defender: &defender
+                },
+                0,
+                15,
+                0,
+                0
+            ),
+            AttackOutcome::Defeat
+        ));
+        assert!(matches!(
+            attack_with_rolls(
+                AttackParams {
+                    attacker: &attacker,
+                    defender: &defender
+                },
+                0,
+                10,
+                0,
+                0
+            ),
+            AttackOutcome::Defeat
+        ));
+    }
 }

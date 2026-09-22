@@ -3,7 +3,9 @@ use std::fmt::Display;
 use rand::random;
 
 use crate::models::{
-    card_asset::CardAsset, card_stats::CardStats, direction::Direction::{self},
+    card_asset::CardAsset,
+    card_stats::CardStats,
+    direction::Direction::{self},
 };
 
 #[derive(PartialEq, Eq)]
@@ -21,7 +23,12 @@ impl Card {
 
         let stats = CardStats::generate(&asset.base_stats);
 
-        Self { id, arrows, asset, stats }
+        Self {
+            id,
+            arrows,
+            asset,
+            stats,
+        }
     }
 
     pub fn facing(&self) -> Vec<Direction> {
@@ -62,5 +69,28 @@ impl Display for Card {
             self.format_stats(),
             self.arrows
         )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{models::battle_class::BattleClass, test_support::card};
+
+    #[test]
+    fn arrow_mask_detects_and_orders_all_facing_directions() {
+        let card = card(1, 0b1010_0101, BattleClass::Physical, 0, 0, 0);
+        assert_eq!(
+            card.facing(),
+            vec![Direction::N, Direction::E, Direction::SW, Direction::NW]
+        );
+        assert!(card.is_facing(Direction::SW));
+        assert!(!card.is_facing(Direction::S));
+    }
+
+    #[test]
+    fn displayed_stats_use_high_nibbles_and_class_letter() {
+        let card = card(1, 0, BattleClass::Flexible, 0xaf, 0x31, 0x09);
+        assert_eq!(card.format_stats(), "AX30");
     }
 }

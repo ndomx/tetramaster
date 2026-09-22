@@ -20,3 +20,20 @@ fn load_cards() -> Result<Vec<CardAsset>, String> {
 
 pub static CARDS: LazyLock<Vec<CardAsset>> =
     LazyLock::new(|| load_cards().expect("failed to load cards"));
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn embedded_catalog_loads_every_current_record_with_required_fields() {
+        assert_eq!(CARDS.len(), 100);
+        for (index, card) in CARDS.iter().enumerate() {
+            assert_eq!(card.index, index);
+            assert!(!card.name.trim().is_empty());
+            assert_eq!(card.base_stats.attack & 0x0f, 0x0f);
+            assert_eq!(card.base_stats.phys_defense & 0x0f, 0x0f);
+            assert_eq!(card.base_stats.mag_defense & 0x0f, 0x0f);
+        }
+    }
+}
