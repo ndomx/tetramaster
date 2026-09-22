@@ -4,13 +4,13 @@ use crate::{
 };
 
 #[derive(PartialEq, Eq)]
-pub struct CardAsset {
+pub struct CardDefinition {
     pub index: usize,
     pub name: String,
     pub base_stats: CardStats,
 }
 
-impl CardAsset {
+impl CardDefinition {
     fn parse_stat(c_opt: Option<char>) -> Result<u8, String> {
         let c = c_opt.ok_or("unable to read char")?;
         let parsed = c.to_digit(16).ok_or(format!("Invalid stat value {}", c))?;
@@ -30,7 +30,7 @@ impl CardAsset {
     }
 }
 
-impl TryFrom<(usize, CardRecord)> for CardAsset {
+impl TryFrom<(usize, CardRecord)> for CardDefinition {
     type Error = String;
 
     fn try_from((index, record): (usize, CardRecord)) -> Result<Self, Self::Error> {
@@ -72,7 +72,7 @@ mod tests {
             ('X', BattleClass::Flexible),
             ('A', BattleClass::Assault),
         ] {
-            let asset = CardAsset::try_from((3, record(&format!("A{letter}3F")))).unwrap();
+            let asset = CardDefinition::try_from((3, record(&format!("A{letter}3F")))).unwrap();
             assert_eq!(asset.index, 3);
             assert_eq!(asset.base_stats.attack, 0xaf);
             assert_eq!(asset.base_stats.battle_class, class);
@@ -83,8 +83,8 @@ mod tests {
 
     #[test]
     fn rejects_missing_invalid_or_unknown_stat_fields() {
-        assert!(CardAsset::try_from((0, record("0P0"))).is_err());
-        assert!(CardAsset::try_from((0, record("GP00"))).is_err());
-        assert!(CardAsset::try_from((0, record("0Q00"))).is_err());
+        assert!(CardDefinition::try_from((0, record("0P0"))).is_err());
+        assert!(CardDefinition::try_from((0, record("GP00"))).is_err());
+        assert!(CardDefinition::try_from((0, record("0Q00"))).is_err());
     }
 }

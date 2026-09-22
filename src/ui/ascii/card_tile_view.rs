@@ -12,12 +12,12 @@ use crate::{
 
 const FRONT_COLOR: Color = Color::Yellow;
 
-pub struct TileCardView<'a> {
+pub struct CardTileView<'a> {
     card: &'a Card,
     back_color: Color,
 }
 
-impl<'a> TileCardView<'a> {
+impl<'a> CardTileView<'a> {
     pub fn new(card: &'a Card, back_color: Color) -> Self {
         Self { card, back_color }
     }
@@ -75,7 +75,7 @@ impl<'a> TileCardView<'a> {
     }
 }
 
-impl<'a> AsciiView for TileCardView<'a> {
+impl<'a> AsciiView for CardTileView<'a> {
     fn width(&self) -> usize {
         CARD_WIDTH
     }

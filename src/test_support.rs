@@ -1,16 +1,17 @@
 use std::sync::LazyLock;
 
 use crate::models::{
-    battle_class::BattleClass, card::Card, card_asset::CardAsset, card_stats::CardStats, tile::Tile,
+    battle_class::BattleClass, card::Card, card_definition::CardDefinition, card_stats::CardStats,
+    tile::Tile,
 };
 
-static PHYSICAL: LazyLock<CardAsset> = LazyLock::new(|| asset(BattleClass::Physical));
-static MAGIC: LazyLock<CardAsset> = LazyLock::new(|| asset(BattleClass::Magic));
-static FLEXIBLE: LazyLock<CardAsset> = LazyLock::new(|| asset(BattleClass::Flexible));
-static ASSAULT: LazyLock<CardAsset> = LazyLock::new(|| asset(BattleClass::Assault));
+static PHYSICAL: LazyLock<CardDefinition> = LazyLock::new(|| asset(BattleClass::Physical));
+static MAGIC: LazyLock<CardDefinition> = LazyLock::new(|| asset(BattleClass::Magic));
+static FLEXIBLE: LazyLock<CardDefinition> = LazyLock::new(|| asset(BattleClass::Flexible));
+static ASSAULT: LazyLock<CardDefinition> = LazyLock::new(|| asset(BattleClass::Assault));
 
-fn asset(battle_class: BattleClass) -> CardAsset {
-    CardAsset {
+fn asset(battle_class: BattleClass) -> CardDefinition {
+    CardDefinition {
         index: 0,
         name: format!("{battle_class}"),
         base_stats: CardStats {

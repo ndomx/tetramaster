@@ -1,13 +1,13 @@
 use crossterm::style::Color;
 
 use crate::{
-    models::{game::Game, tile::Tile, tile_card::TileCard},
+    models::{board_card::BoardCard, game::Game, tile::Tile},
     ui::ascii::{
         ascii_view::AsciiView,
+        blocked_tile_view::BlockedTileView,
+        card_tile_view::CardTileView,
         constants::{CARD_HEIGHT, CARD_WIDTH},
-        tile_block_view::TileBlockView,
-        tile_card_view::TileCardView,
-        tile_empty_view::TileEmptyView,
+        empty_tile_view::EmptyTileView,
         tile_view::TileView,
     },
     utils::constants::BOARD_SIZE,
@@ -29,21 +29,21 @@ impl<'a> BoardView<'a> {
         tiles
             .iter()
             .map(|t| match t {
-                Tile::Empty => TileView::Empty(TileEmptyView {}),
-                Tile::Block => TileView::Block(TileBlockView {}),
-                Tile::Card(played_card) => TileView::Card(self.build_card_view(played_card)),
+                Tile::Empty => TileView::Empty(EmptyTileView {}),
+                Tile::Blocked => TileView::Block(BlockedTileView {}),
+                Tile::Occupied(played_card) => TileView::Card(self.build_card_view(played_card)),
             })
             .collect()
     }
 
-    fn build_card_view(&self, played_card: &'a TileCard) -> TileCardView<'a> {
+    fn build_card_view(&self, played_card: &'a BoardCard) -> CardTileView<'a> {
         let color = if played_card.owner_id == self.game.player.id {
             Color::Blue
         } else {
             Color::Red
         };
 
-        TileCardView::new(&played_card.card, color)
+        CardTileView::new(&played_card.card, color)
     }
 }
 
