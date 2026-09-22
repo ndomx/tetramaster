@@ -6,6 +6,8 @@ force until the human explicitly changes them.
 ## Project And Milestone Boundaries
 
 - Use one Cargo package with a shared library and application binaries.
+- Comprehensive behavior-locking tests are the first Milestone 1 deliverable and
+  must pass before module extraction, renaming, or other structural refactoring.
 - Milestone 1 must not edit `Cargo.toml` or change dependencies.
 - Milestone 1 retains `src/main.rs` as the TUI entry point.
 - Dioxus, RON, artwork support, platform features, and binary separation begin in
@@ -80,4 +82,4 @@ with the human before the listed implementation step changes or formalizes it.
 | What is the exact combo traversal and ordering? | Characterization tests | M1.06 rule extraction |
 | Does every playable card require a unique runtime ID? | Existing random ID behavior | M1.09 public action/event IDs |
 
-M1.02 records current behavior without treating it as the final design decision.
+M1.01 records current behavior without treating it as the final design decision.

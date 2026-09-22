@@ -56,6 +56,10 @@ catalog and keep `src/main.rs` as the TUI entry point. The TUI must become the
 first adapter for the same frontend-neutral contract that the later Dioxus app
 will consume.
 
+Do not begin structural refactoring until M1.01's comprehensive characterization
+suite is complete and passing. Later steps must preserve those tests; changing a
+baseline assertion requires explicit human approval of the behavior change.
+
 ## Rust Style
 
 - Prefer typed domain concepts over raw primitives when it clarifies intent.

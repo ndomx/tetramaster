@@ -58,8 +58,8 @@ Dioxus, platform features, and separate binaries.
 
 ### Milestone 1: Engine Refactor
 
-- [ ] [M1.01 - Establish the library boundary](m1-01-library-boundary.md)
-- [ ] [M1.02 - Characterize current behavior](m1-02-characterization.md)
+- [ ] [M1.01 - Lock current behavior with comprehensive tests](m1-01-comprehensive-tests.md)
+- [ ] [M1.02 - Establish the library boundary](m1-02-library-boundary.md)
 - [ ] [M1.03 - Apply agreed vocabulary](m1-03-vocabulary.md)
 - [ ] [M1.04 - Separate domain and board responsibilities](m1-04-domain-board.md)
 - [ ] [M1.05 - Extract placement rules](m1-05-placement-rules.md)
@@ -81,6 +81,8 @@ Dioxus, platform features, and separate binaries.
 
 ## Global Guardrails
 
+- Do not begin structural refactoring until M1.01's comprehensive baseline suite
+  is complete and green.
 - Preserve current game behavior during structural work. Characterize suspected
   bugs before changing them and obtain explicit approval for the behavior change.
 - Keep UI concerns and framework types out of domain, rules, AI, and session code.
