@@ -254,3 +254,236 @@ impl<'a> Game<'a> {
         self.board.set_owner(pos, owner_id)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{
+        models::{battle_class::BattleClass, effect::Effect, tile::Tile, tile_card::TileCard},
+        test_support::{card, empty_tiles},
+        utils::constants::MAX_HAND_CARDS,
+    };
+    use std::collections::VecDeque;
+
+    fn configured_game<'a>(rng: &'a mut ThreadRng) -> Game<'a> {
+        let mut game = Game::new(0.0, rng);
+        game.board = Board::from_tiles(empty_tiles());
+        game.player.id = 1;
+        game.player.hand = (0..MAX_HAND_CARDS)
+            .map(|i| card(10 + i as u64, 0, BattleClass::Physical, 1, 1, 1))
+            .collect();
+        game.cpu.id = 2;
+        game.cpu.hand = (0..MAX_HAND_CARDS)
+            .map(|i| card(20 + i as u64, 0, BattleClass::Physical, 1, 1, 1))
+            .collect();
+        game
+    }
+
+    #[test]
+    fn game_start_selects_an_active_player_and_enters_start_turn() {
+        let mut rng = rand::rng();
+        let mut game = configured_game(&mut rng);
+        assert_eq!(game.state, GameState::NotStarted);
+        game.run().unwrap();
+        assert_eq!(game.state, GameState::StartTurn);
+        assert!(matches!(
+            game.active_player,
+            ActivePlayer::Player | ActivePlayer::Cpu
+        ));
+        assert_eq!(
+            game.awaiting_input(),
+            game.active_player == ActivePlayer::Player
+        );
+    }
+
+    #[test]
+    fn player_turn_rejects_unavailable_position_without_removing_card() {
+        let mut rng = rand::rng();
+        let mut game = configured_game(&mut rng);
+        game.active_player = ActivePlayer::Player;
+        game.state = GameState::StartTurn;
+        let mut tiles = empty_tiles();
+        tiles[0] = Tile::Block;
+        game.board = Board::from_tiles(tiles);
+        let card_id = game.player.hand[0].id;
+        let before = game.player.hand.len();
+        assert!(
+            game.play_card(Action::new(card_id, Position::new(0, 0)))
+                .is_err()
+        );
+        assert_eq!(game.player.hand.len(), before);
+        assert_eq!(game.state, GameState::StartTurn);
+    }
+
+    #[test]
+    fn player_placement_enters_effect_processing_then_end_turn() {
+        let mut rng = rand::rng();
+        let mut game = configured_game(&mut rng);
+        game.active_player = ActivePlayer::Player;
+        game.state = GameState::StartTurn;
+        let card_id = game.player.hand[0].id;
+        game.play_card(Action::new(card_id, Position::new(0, 0)))
+            .unwrap();
+        assert_eq!(game.player.hand.len(), MAX_HAND_CARDS - 1);
+        assert!(
+            matches!(game.state, GameState::ApplyEffects { ref pending } if pending.is_empty())
+        );
+        assert_eq!(game.player_score(), 1);
+        game.run().unwrap();
+        assert_eq!(game.state, GameState::EndTurn);
+        game.run().unwrap();
+        assert_eq!(game.state, GameState::StartTurn);
+        assert!(game.active_player == ActivePlayer::Cpu);
+    }
+
+    #[test]
+    fn cpu_turn_chooses_an_available_position_and_consumes_one_card() {
+        let mut rng = rand::rng();
+        let mut game = configured_game(&mut rng);
+        game.active_player = ActivePlayer::Cpu;
+        game.state = GameState::StartTurn;
+        game.run().unwrap();
+        assert_eq!(game.cpu.hand.len(), MAX_HAND_CARDS - 1);
+        assert_eq!(game.cpu_score(), 1);
+        assert!(matches!(game.state, GameState::ApplyEffects { .. }));
+    }
+
+    #[test]
+    fn capture_effect_changes_target_owner_one_effect_per_run() {
+        let mut rng = rand::rng();
+        let mut game = configured_game(&mut rng);
+        let mut tiles = empty_tiles();
+        tiles[0] = Tile::Card(TileCard {
+            owner_id: 1,
+            card: card(10, 0, BattleClass::Physical, 0, 0, 0),
+        });
+        tiles[1] = Tile::Card(TileCard {
+            owner_id: 2,
+            card: card(20, 0, BattleClass::Physical, 0, 0, 0),
+        });
+        game.board = Board::from_tiles(tiles);
+        game.active_player = ActivePlayer::Player;
+        game.state = GameState::ApplyEffects {
+            pending: VecDeque::from([EffectInstance::new(10, 20, Effect::Capture)]),
+        };
+        game.run().unwrap();
+        assert_eq!(
+            game.board.get_card(Position::new(0, 1)).unwrap().owner_id,
+            1
+        );
+        assert!(
+            matches!(game.state, GameState::ApplyEffects { ref pending } if pending.is_empty())
+        );
+        game.run().unwrap();
+        assert_eq!(game.state, GameState::EndTurn);
+    }
+
+    #[test]
+    fn victory_propagates_capture_while_defeat_flips_source_and_ends_turn() {
+        let mut rng = rand::rng();
+        let mut game = configured_game(&mut rng);
+        let mut tiles = empty_tiles();
+        tiles[0] = Tile::Card(TileCard {
+            owner_id: 1,
+            card: card(10, 0, BattleClass::Physical, 0, 0, 0),
+        });
+        tiles[1] = Tile::Card(TileCard {
+            owner_id: 2,
+            card: card(
+                20,
+                1 << crate::models::direction::Direction::E as u8,
+                BattleClass::Physical,
+                0,
+                0,
+                0,
+            ),
+        });
+        tiles[2] = Tile::Card(TileCard {
+            owner_id: 2,
+            card: card(30, 0, BattleClass::Physical, 0, 0, 0),
+        });
+        game.board = Board::from_tiles(tiles);
+        game.state = GameState::ApplyEffects {
+            pending: VecDeque::new(),
+        };
+        game.on_victory(1, Position::new(0, 1)).unwrap();
+        assert_eq!(
+            game.board.get_card(Position::new(0, 1)).unwrap().owner_id,
+            1
+        );
+        assert!(
+            matches!(game.state, GameState::ApplyEffects { ref pending } if pending.front().is_some_and(|effect| effect.target_card_id == 30))
+        );
+
+        game.on_defeat(2, Position::new(0, 0)).unwrap();
+        assert_eq!(
+            game.board.get_card(Position::new(0, 0)).unwrap().owner_id,
+            2
+        );
+        assert_eq!(game.state, GameState::EndTurn);
+    }
+
+    #[test]
+    fn end_turn_finishes_for_full_board_or_two_empty_hands() {
+        let mut rng = rand::rng();
+        let mut game = configured_game(&mut rng);
+        game.state = GameState::EndTurn;
+        game.player.hand.clear();
+        game.cpu.hand.clear();
+        game.run().unwrap();
+        assert_eq!(game.state, GameState::Finished);
+
+        let tiles = std::array::from_fn(|index| {
+            Tile::Card(TileCard {
+                owner_id: 1,
+                card: card(100 + index as u64, 0, BattleClass::Physical, 0, 0, 0),
+            })
+        });
+        game.board = Board::from_tiles(tiles);
+        game.player
+            .hand
+            .push(card(1, 0, BattleClass::Physical, 0, 0, 0));
+        game.state = GameState::EndTurn;
+        game.run().unwrap();
+        assert_eq!(game.state, GameState::Finished);
+    }
+
+    #[test]
+    fn automated_full_game_reaches_completion_and_preserves_card_totals() {
+        let mut rng = rand::rng();
+        let mut game = configured_game(&mut rng);
+        game.active_player = ActivePlayer::Player;
+        game.state = GameState::StartTurn;
+        let mut steps = 0;
+        while game.state != GameState::Finished {
+            if game.awaiting_input() {
+                let card_id = game.player.hand[0].id;
+                let target = (0..16)
+                    .filter_map(crate::utils::helpers::idx2pos)
+                    .find(|position| game.board.is_available(*position))
+                    .unwrap();
+                game.play_card(Action::new(card_id, target)).unwrap();
+            } else {
+                game.run().unwrap();
+            }
+            steps += 1;
+            assert!(steps < 100);
+        }
+        assert!(game.player.hand.is_empty());
+        assert!(game.cpu.hand.is_empty());
+        assert_eq!(game.player_score() + game.cpu_score(), MAX_HAND_CARDS * 2);
+        assert_eq!(game.board.count_empty(), 16 - MAX_HAND_CARDS * 2);
+    }
+
+    #[test]
+    fn invalid_missing_card_does_not_change_board() {
+        let mut rng = rand::rng();
+        let mut game = configured_game(&mut rng);
+        assert!(
+            game.play_card(Action::new(999, Position::new(0, 0)))
+                .is_err()
+        );
+        assert!(game.board.is_available(Position::new(0, 0)));
+        assert_eq!(game.player.hand.len(), MAX_HAND_CARDS);
+    }
+}

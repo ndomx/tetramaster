@@ -1,4 +1,4 @@
-use crate::models::{effect::Effect};
+use crate::models::effect::Effect;
 
 #[derive(PartialEq, Debug)]
 pub struct EffectInstance {

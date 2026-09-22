@@ -52,3 +52,39 @@ impl TryFrom<(usize, CardRecord)> for CardAsset {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn record(stats: &str) -> CardRecord {
+        CardRecord {
+            name: "Test".into(),
+            stats: stats.into(),
+        }
+    }
+
+    #[test]
+    fn parses_hex_stats_and_each_battle_class() {
+        for (letter, class) in [
+            ('P', BattleClass::Physical),
+            ('M', BattleClass::Magic),
+            ('X', BattleClass::Flexible),
+            ('A', BattleClass::Assault),
+        ] {
+            let asset = CardAsset::try_from((3, record(&format!("A{letter}3F")))).unwrap();
+            assert_eq!(asset.index, 3);
+            assert_eq!(asset.base_stats.attack, 0xaf);
+            assert_eq!(asset.base_stats.battle_class, class);
+            assert_eq!(asset.base_stats.phys_defense, 0x3f);
+            assert_eq!(asset.base_stats.mag_defense, 0xff);
+        }
+    }
+
+    #[test]
+    fn rejects_missing_invalid_or_unknown_stat_fields() {
+        assert!(CardAsset::try_from((0, record("0P0"))).is_err());
+        assert!(CardAsset::try_from((0, record("GP00"))).is_err());
+        assert!(CardAsset::try_from((0, record("0Q00"))).is_err());
+    }
+}
