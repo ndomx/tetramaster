@@ -1,18 +1,9 @@
 use std::{io::stdout, thread::sleep, time::Duration};
 
-use crate::{
+use tetramaster::{
     models::{game::Game, game_state::GameState},
     ui::terminal::Terminal,
 };
-
-mod assets;
-mod commands;
-mod models;
-mod ui;
-mod utils;
-
-#[cfg(test)]
-mod test_support;
 
 fn main() {
     let mut rng = rand::rng();
