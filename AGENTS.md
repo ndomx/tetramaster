@@ -28,7 +28,7 @@ Run `cargo fmt` before finalizing Rust edits. Run `cargo test` and Clippy for be
 `plans/README.md` is the plan index, and `plans/00-decisions.md` records settled
 architecture. The individual files under `plans/` define agent-sized steps. They
 are planning context, not authorization to implement every unchecked item at
-once. `REFACTORING_PLAN.md` is only a pointer retained for discoverability.
+once.
 
 When starting a refactor step:
 
