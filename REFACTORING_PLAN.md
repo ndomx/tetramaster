@@ -94,23 +94,41 @@ justify the boundary.
 
 ### Card catalog
 
-`src/assets/card_records.csv` is the definitive and complete source of available
-card definitions. It is application data, not user input or mutable runtime
-state.
+The embedded card catalog is the definitive and complete source of available card
+definitions. It is application data, not user input or mutable runtime state.
 
-- Keep the CSV embedded in the executable with `include_str!`.
+- Replace `src/assets/card_records.csv` with a structured, human-editable RON
+  catalog embedded in the executable with `include_str!`.
+- Store each stat as a named, fully expanded value instead of encoding attack,
+  battle class, physical defense, and magic defense in a positional string such
+  as `0P00`.
+- Deserialize battle classes directly into typed enum variants such as
+  `Physical` and `Magic`.
+- Keep the serialized definition separate from the runtime `CardDefinition` only
+  where construction, derived values, or validation require it. Do not retain a
+  parsing layer whose purpose is decoding a compact stats format.
+- Use Serde defaults for new optional fields when backward-compatible catalog
+  evolution is useful; require fields that are essential to a valid card.
 - Parse it once into an immutable global catalog using `LazyLock`.
 - Do not add runtime loading, editing, or replacement of the catalog.
 - Rename `CardAsset` to `CardDefinition`; it represents canonical game data, not
   a visual or audio asset.
-- Keep the Serde input type private to the loader and name it `CsvCardRecord`.
+- Keep any Serde-only input type private to the loader and name it after its
+  domain role rather than its storage format.
 - Let each playable `Card` hold a `&'static CardDefinition`. This keeps canonical
   names and base stats in one place and does not introduce a non-static lifetime.
 - Force catalog initialization during application startup so invalid embedded
   data fails immediately rather than during hand generation.
-- Validate the complete embedded catalog in a test, including row context and the
-  exact four-character stats format.
+- Validate the complete embedded catalog in a test, including entry context,
+  required fields, supported battle classes, and valid stat ranges.
 - Expose catalog access through a read-only slice or iterator.
+
+RON is preferred over an expanded CSV because planned fields may no longer remain
+flat scalar columns. It keeps records readable while allowing enums, optional
+values, lists, and nested structures without introducing additional compact
+encodings. An expanded CSV with one named column per value remains an acceptable
+intermediate migration format, but the four-character `stats` field should not
+survive the migration.
 
 `CardDefinition` is the catalog entry, `Card` is a randomized playable instance,
 and `CardStats` contains the instance's rolled combat values. The catalog's base
@@ -179,8 +197,9 @@ mutate the board directly, choose CPU moves, or infer state transitions.
   executable.
 - [ ] Add focused tests for board bounds, occupied-tile rejection, card removal
   from a hand, and score calculation.
-- [ ] Add a catalog test that parses every embedded CSV record and validates its
-  name, exact stats format, battle class, and numeric values.
+- [ ] Add a catalog test that parses every current embedded CSV record and
+  characterizes its name, exact stats format, battle class, and numeric values
+  before migrating the catalog format.
 - [ ] Add combat tests for victory, defeat, and each battle-class stat pairing.
 - [ ] Add effect tests for direct capture, opposed arrows, combo propagation, and
   effect ordering.
@@ -204,7 +223,7 @@ Proposed naming changes:
 | Current | Proposed | Reason |
 | --- | --- | --- |
 | `CardAsset` | `CardDefinition` | It is canonical game data rather than a presentation asset. |
-| `CardRecord` | `CsvCardRecord` | It is private deserialization plumbing for the embedded CSV. |
+| `CardRecord` | `SerializedCardDefinition` | It is private deserialization plumbing and should not be named after a temporary storage format. |
 | `TileCard` | `PlacedCard` | Describes a card's role on the board. |
 | `Action` | `GameAction` | Defines the command type shared by every frontend and the AI. |
 | `EffectInstance` | `PendingEffect` | Describes an effect waiting to be resolved. |
@@ -222,6 +241,8 @@ removed rather than renamed.
 
 - [ ] Move data-centric types from `models` into `domain`.
 - [ ] Keep only local invariants and basic queries on domain types.
+- [ ] Migrate the embedded card catalog from CSV to RON with named, expanded
+  fields, then remove the compact stats decoder and the `csv` dependency.
 - [ ] Keep catalog parsing under `assets`, while placing `CardDefinition`, `Card`,
   and `CardStats` with the domain types.
 - [ ] Preserve `Card` references to immutable `&'static CardDefinition` values;
