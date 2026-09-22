@@ -29,3 +29,13 @@ cargo clippy --all-targets -- -D warnings
 ## Notes
 
 The current implementation is intentionally small and playable from the terminal. The next useful cleanup is to move more Tetra Master rules out of `Game` and into focused rule modules that can be tested without terminal input or random global state.
+
+## Legal notice
+
+This is an unofficial, independently developed, non-commercial fan project. It is not affiliated with, endorsed by, sponsored by, or approved by Square Enix.
+
+FINAL FANTASY, FINAL FANTASY IX, TETRA MASTER, and related names are trademarks or other intellectual property of their respective owners. This project contains no original game artwork, audio, source code, or other game assets. All implementation code was independently created.
+
+The referenced names are used solely to identify the game and its associated concepts. No ownership of those names is claimed.
+
+Any software license distributed with this repository applies only to the independently authored source code and does not grant rights to third-party trademarks or other intellectual property.
