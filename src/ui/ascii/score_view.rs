@@ -7,11 +7,11 @@ use crate::{
 };
 
 pub struct ScoreView<'a> {
-    game: &'a Game<'a>,
+    game: &'a Game,
 }
 
 impl<'a> ScoreView<'a> {
-    pub fn new(game: &'a Game<'a>) -> Self {
+    pub fn new(game: &'a Game) -> Self {
         Self { game }
     }
 }

@@ -1,7 +1,5 @@
 use std::fmt::Display;
 
-use rand::random;
-
 mod battle_class;
 mod definition;
 mod stats;
@@ -10,7 +8,7 @@ pub use battle_class::BattleClass;
 pub use definition::CardDefinition;
 pub use stats::CardStats;
 
-use crate::models::core::geometry::Direction;
+use crate::{models::core::geometry::Direction, utils::random::GameRng};
 
 #[derive(PartialEq, Eq)]
 pub struct Card {
@@ -21,11 +19,11 @@ pub struct Card {
 }
 
 impl Card {
-    pub fn new(asset: &'static CardDefinition) -> Self {
-        let arrows = random();
-        let id = random();
+    pub fn new(asset: &'static CardDefinition, rng: &mut GameRng) -> Self {
+        let arrows = rng.next_u8();
+        let id = rng.next_u64();
 
-        let stats = CardStats::generate(&asset.base_stats);
+        let stats = CardStats::generate(&asset.base_stats, rng);
 
         Self {
             id,
