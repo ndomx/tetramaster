@@ -1,4 +1,4 @@
-# M1.11 - Verify And Document Milestone 1
+# M1.12 - Verify And Document Milestone 1
 
 ## Objective
 
@@ -7,7 +7,7 @@ any dependency, catalog-format, or Dioxus work begins.
 
 ## Prerequisites
 
-- M1.01 through M1.10 are complete.
+- M1.01 through M1.11 are complete.
 - No unresolved human decision blocks the public contract.
 
 ## Scope
