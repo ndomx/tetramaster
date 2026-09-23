@@ -1,7 +1,7 @@
 use std::array;
 use std::fmt::{Display, Formatter};
 
-use rand::{RngExt, rngs::ThreadRng, seq::IteratorRandom};
+use rand::{RngExt, rngs::ThreadRng};
 
 mod board_card;
 mod tile;
@@ -107,17 +107,6 @@ impl Board {
 
     pub fn is_available(&self, pos: Position) -> bool {
         self.get(pos) == Some(&Tile::Empty)
-    }
-
-    pub fn available_position(&self, rng: &mut ThreadRng) -> Option<Position> {
-        self.tiles
-            .iter()
-            .enumerate()
-            .filter_map(|(idx, tile)| match tile {
-                Tile::Empty => idx2pos(idx),
-                _ => None,
-            })
-            .choose(rng)
     }
 
     pub fn set_owner(&mut self, pos: Position, owner_id: u64) -> Result<(), String> {

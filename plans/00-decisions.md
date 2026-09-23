@@ -70,6 +70,9 @@ force until the human explicitly changes them.
 - Use the singular `available_position` for the current board method because it
   randomly returns one `Option<Position>`. If a later rules or AI API exposes all
   legal positions, that separate collection API may use a plural name.
+- M1.05 replaces that board-level random selection with
+  `rules::placement::legal_positions`; session coordination temporarily chooses
+  a CPU target from the returned positions until AI extraction in M1.08.
 
 ## Frontend Contract
 

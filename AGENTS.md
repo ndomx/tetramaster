@@ -13,7 +13,10 @@ This is a Rust terminal implementation of Final Fantasy IX Tetra Master.
 - `src/models/session/` contains application-level match state and coordination
   types such as `Game`, `GameAction`, `GamePhase`, and pending effects. Session
   models may depend on core models, never the reverse.
-- `src/commands/` contains rule operations such as battle resolution and effect generation.
+- `src/rules/` contains frontend-neutral rule logic, beginning with placement
+  legality and placement-triggered interaction discovery.
+- `src/commands/` temporarily contains combat and combo operations that have not
+  yet moved into focused rule modules.
 - `src/ui/` contains terminal and ASCII rendering.
 - `src/assets/` contains static card records and parsing into card assets.
 - `src/utils/` contains project-wide constants and small helpers.
