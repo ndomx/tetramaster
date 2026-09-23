@@ -10,6 +10,7 @@ use crate::{
         core::{Player, board::Board, card::Card, geometry::Position},
         session::{ActivePlayer, GameAction, GamePhase, PendingEffect},
     },
+    rules::placement::{is_legal_position, legal_positions},
     utils::{constants::MAX_HAND_CARDS, random::VecRandomExt},
 };
 
@@ -139,7 +140,7 @@ impl<'a> Game<'a> {
     }
 
     fn player_turn(&mut self, action: GameAction) -> TurnResult {
-        if !self.board.is_available(action.target) {
+        if !is_legal_position(&self.board, action.target) {
             return Err("position is not available".to_string());
         }
 
@@ -152,9 +153,9 @@ impl<'a> Game<'a> {
     }
 
     fn cpu_turn(&mut self) -> TurnResult {
-        let target = self
-            .board
-            .available_position(self.rng)
+        let target = legal_positions(&self.board)
+            .choose(self.rng)
+            .copied()
             .ok_or("unable to find a position")?;
 
         let card = self

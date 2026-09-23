@@ -65,7 +65,7 @@ Dioxus, platform features, and separate binaries.
 - [x] [M1.02 - Establish the library boundary](m1-02-library-boundary.md)
 - [x] [M1.03 - Apply agreed vocabulary](m1-03-vocabulary.md)
 - [x] [M1.04 - Separate core and session model responsibilities](m1-04-domain-board.md)
-- [ ] [M1.05 - Extract placement rules](m1-05-placement-rules.md)
+- [x] [M1.05 - Extract placement rules](m1-05-placement-rules.md)
 - [ ] [M1.06 - Extract combat, capture, and combo rules](m1-06-combat-capture.md)
 - [ ] [M1.07 - Centralize randomness](m1-07-randomness.md)
 - [ ] [M1.08 - Isolate CPU move selection](m1-08-ai.md)

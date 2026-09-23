@@ -1,6 +1,7 @@
 pub mod assets;
 pub mod commands;
 pub mod models;
+pub mod rules;
 pub mod ui;
 pub mod utils;
 

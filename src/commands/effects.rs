@@ -7,6 +7,7 @@ use crate::models::{
     },
     session::{Effect, PendingEffect},
 };
+use crate::rules::placement::{PlacementInteractionKind, discover_interactions};
 
 pub struct GenerateEffectsParams<'a> {
     pub position: Position,
@@ -16,25 +17,21 @@ pub struct GenerateEffectsParams<'a> {
 pub fn generate_effects<'a>(
     params: GenerateEffectsParams<'a>,
 ) -> Result<VecDeque<PendingEffect>, String> {
-    let tc_ref = params
-        .board
-        .get_card(params.position)
-        .ok_or("Could not find card")?;
-
-    let neighbors = scan_neighbors(
-        params.board,
-        tc_ref.owner_id,
-        params.position,
-        tc_ref.card.facing(),
-    );
-
-    let mut effects: Vec<PendingEffect> = neighbors
-        .iter()
-        .map(|&(defender, dir)| build_challenger_effect(tc_ref.card.id, defender, dir))
-        .collect();
-
-    effects.sort_by_key(|ef_instance| ef_instance.effect.priority());
-    Ok(VecDeque::from(effects))
+    Ok(discover_interactions(params.board, params.position)
+        .map_err(|_| "Could not find card".to_string())?
+        .into_iter()
+        .map(|interaction| {
+            let effect = match interaction.kind {
+                PlacementInteractionKind::Battle => Effect::Attack,
+                PlacementInteractionKind::DirectCapture => Effect::DirectCapture,
+            };
+            PendingEffect::new(
+                interaction.source_card_id,
+                interaction.target_card_id,
+                effect,
+            )
+        })
+        .collect())
 }
 
 pub fn spread_victory_effects<'a>(
@@ -72,19 +69,6 @@ fn scan_neighbors(
         .filter_map(|dir| board.get_relative(position, dir).map(|tc| (tc, *dir)))
         .filter(|(tc, _)| tc.owner_id != ally_id)
         .collect()
-}
-
-fn build_challenger_effect(
-    source_card_id: u64,
-    defender: &BoardCard,
-    dir: Direction,
-) -> PendingEffect {
-    let effect = match defender.card.is_facing(dir.opposite()) {
-        true => Effect::Attack,
-        false => Effect::DirectCapture,
-    };
-
-    PendingEffect::new(source_card_id, defender.card.id, effect)
 }
 
 #[cfg(test)]
