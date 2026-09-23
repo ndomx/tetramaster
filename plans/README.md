@@ -71,7 +71,8 @@ Dioxus, platform features, and separate binaries.
 - [ ] [M1.08 - Isolate CPU move selection](m1-08-ai.md)
 - [ ] [M1.09 - Implement the frontend contract](m1-09-session-contract.md)
 - [ ] [M1.10 - Adapt the TUI to the shared contract](m1-10-tui-adapter.md)
-- [ ] [M1.11 - Verify and document Milestone 1](m1-11-verification.md)
+- [ ] [M1.11 - Separate board control from player identity](m1-11-board-control.md)
+- [ ] [M1.12 - Verify and document Milestone 1](m1-12-verification.md)
 
 ### Milestone 2: Catalog And Dioxus Web App
 
