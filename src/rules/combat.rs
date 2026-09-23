@@ -1,6 +1,7 @@
 use crate::{
     min,
     models::core::card::{BattleClass, Card},
+    utils::random::GameRng,
 };
 
 pub struct CombatParams<'a> {
@@ -14,26 +15,30 @@ pub enum CombatOutcome {
     Defeat,
 }
 
-pub fn resolve_combat(params: CombatParams<'_>) -> CombatOutcome {
-    let attack_power = attack_value(params.attacker);
-    let defense_power = defense_value(params.defender, params.attacker.stats.battle_class);
+pub fn resolve_combat(params: CombatParams<'_>, rng: &mut GameRng) -> CombatOutcome {
+    let attack_power = attack_value(params.attacker, rng);
+    let defense_power = defense_value(params.defender, params.attacker.stats.battle_class, rng);
 
     resolve_power(attack_power, defense_power)
 }
 
-fn attack_value(card: &Card) -> u8 {
-    let power = card.stats.attack + rand::random_range(0..16u8);
-    let penalty = rand::random_range(0..=power);
+fn attack_value(card: &Card, rng: &mut GameRng) -> u8 {
+    let power = boosted_power(card.stats.attack, rng.u8_below(16));
+    let penalty = rng.u8_inclusive(power);
 
     power.saturating_sub(penalty)
 }
 
-fn defense_value(card: &Card, battle_class: BattleClass) -> u8 {
+fn defense_value(card: &Card, battle_class: BattleClass, rng: &mut GameRng) -> u8 {
     let stat = defense_stat(card, battle_class);
-    let power = stat + rand::random_range(0..16u8);
-    let penalty = rand::random_range(0..=power);
+    let power = boosted_power(stat, rng.u8_below(16));
+    let penalty = rng.u8_inclusive(power);
 
     power.saturating_sub(penalty)
+}
+
+fn boosted_power(stat: u8, bonus: u8) -> u8 {
+    stat.saturating_add(bonus)
 }
 
 fn defense_stat(card: &Card, battle_class: BattleClass) -> u8 {
@@ -65,9 +70,11 @@ fn resolve_with_rolls(
     defense_bonus: u8,
     defense_penalty: u8,
 ) -> CombatOutcome {
-    let attack_power = params.attacker.stats.attack + attack_bonus;
-    let defense_power =
-        defense_stat(params.defender, params.attacker.stats.battle_class) + defense_bonus;
+    let attack_power = boosted_power(params.attacker.stats.attack, attack_bonus);
+    let defense_power = boosted_power(
+        defense_stat(params.defender, params.attacker.stats.battle_class),
+        defense_bonus,
+    );
 
     resolve_power(
         attack_power.saturating_sub(attack_penalty),
@@ -144,5 +151,12 @@ mod tests {
             resolve_with_rolls(params(), 0, 10, 0, 0),
             CombatOutcome::Defeat
         );
+    }
+
+    #[test]
+    fn combat_bonus_saturates_at_the_u8_upper_bound() {
+        assert_eq!(boosted_power(u8::MAX, 15), u8::MAX);
+        assert_eq!(boosted_power(u8::MAX - 5, 15), u8::MAX);
+        assert_eq!(boosted_power(u8::MAX - 15, 15), u8::MAX);
     }
 }

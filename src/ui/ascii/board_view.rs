@@ -17,7 +17,7 @@ use crate::{
 };
 
 pub struct BoardView<'a> {
-    game: &'a Game<'a>,
+    game: &'a Game,
 }
 
 impl<'a> BoardView<'a> {

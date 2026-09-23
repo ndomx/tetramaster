@@ -127,3 +127,16 @@ M1.01 records current behavior without treating it as the final design decision.
   individual pending effect. The original game presents all captures from one
   combo simultaneously; a later event or animation design may group them without
   silently changing the resulting ownership transitions.
+
+### M1.07 Randomness Decisions
+
+- A per-session `GameRng` wraps the existing dependency's seeded `StdRng` and is
+  owned by `Game`. There is no process-global random state, borrowed `ThreadRng`,
+  or concrete generator exposed through the frontend-facing API.
+- The TUI creates and displays a fresh seed, constructs `GameRng`, and moves it
+  into the session. A recorded seed and identical action sequence reproduce the
+  complete game.
+- Generated card stats use inclusive `0..=base` ranges. A zero base produces
+  zero, and the base value itself is reachable.
+- The random combat bonus uses saturating addition, so power is capped at
+  `u8::MAX` instead of overflowing when a generated stat is near its upper bound.

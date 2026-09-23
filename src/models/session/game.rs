@@ -1,7 +1,5 @@
 use std::collections::VecDeque;
 
-use rand::{Rng, RngExt, rngs::ThreadRng, seq::IndexedRandom};
-
 use crate::{
     assets::CARDS,
     models::{
@@ -16,7 +14,10 @@ use crate::{
             PlacementInteractionKind, discover_interactions, is_legal_position, legal_positions,
         },
     },
-    utils::{constants::MAX_HAND_CARDS, random::VecRandomExt},
+    utils::{
+        constants::MAX_HAND_CARDS,
+        random::{GameRng, VecRandomExt},
+    },
 };
 
 use super::Effect;
@@ -34,21 +35,21 @@ fn enqueue_combo_captures(pending: &mut VecDeque<PendingEffect>, combo_captures:
     }
 }
 
-pub struct Game<'a> {
+pub struct Game {
     pub board: Board,
     pub player: Player,
     pub cpu: Player,
     pub state: GamePhase,
     pub active_player: ActivePlayer,
-    rng: &'a mut ThreadRng,
+    rng: GameRng,
 }
 
-impl<'a> Game<'a> {
-    pub fn new(block_density: f64, rng: &'a mut ThreadRng) -> Self {
-        let board = Board::build(block_density, rng);
+impl Game {
+    pub fn new(block_density: f64, mut rng: GameRng) -> Self {
+        let board = Board::build(block_density, &mut rng);
 
-        let player = Game::build_player(false, rng);
-        let cpu = Game::build_player(true, rng);
+        let player = Game::build_player(false, &mut rng);
+        let cpu = Game::build_player(true, &mut rng);
 
         Self {
             board,
@@ -140,7 +141,7 @@ impl<'a> Game<'a> {
         Ok(())
     }
 
-    fn build_player(is_cpu: bool, rng: &mut ThreadRng) -> Player {
+    fn build_player(is_cpu: bool, rng: &mut GameRng) -> Player {
         let id: u64 = rng.next_u64();
         let hand = Game::build_hand(rng);
         let name = match is_cpu {
@@ -151,8 +152,11 @@ impl<'a> Game<'a> {
         Player { id, name, hand }
     }
 
-    fn build_hand(rng: &mut ThreadRng) -> Vec<Card> {
-        CARDS.sample(rng, MAX_HAND_CARDS).map(Card::new).collect()
+    fn build_hand(rng: &mut GameRng) -> Vec<Card> {
+        rng.sample(&CARDS, MAX_HAND_CARDS)
+            .into_iter()
+            .map(|definition| Card::new(definition, rng))
+            .collect()
     }
 
     fn player_turn(&mut self, action: GameAction) -> TurnResult {
@@ -169,15 +173,17 @@ impl<'a> Game<'a> {
     }
 
     fn cpu_turn(&mut self) -> TurnResult {
-        let target = legal_positions(&self.board)
-            .choose(self.rng)
+        let positions = legal_positions(&self.board);
+        let target = self
+            .rng
+            .choose(&positions)
             .copied()
             .ok_or("unable to find a position")?;
 
         let card = self
             .cpu
             .hand
-            .take_random(self.rng)
+            .take_random(&mut self.rng)
             .ok_or("unable to draw a card from cpu")?;
 
         self.place_card(card, self.cpu.id, target)
@@ -238,10 +244,13 @@ impl<'a> Game<'a> {
             .position_of_card(pending_effect.target_card_id)
             .ok_or("Cannot find target")?;
 
-        let result = resolve_combat(CombatParams {
-            attacker: &source_tc.card,
-            defender: &target_tc.card,
-        });
+        let result = resolve_combat(
+            CombatParams {
+                attacker: &source_tc.card,
+                defender: &target_tc.card,
+            },
+            &mut self.rng,
+        );
 
         match result {
             CombatOutcome::Victory => self.on_victory(source_tc.owner_id, target_pos),
@@ -321,15 +330,59 @@ mod tests {
         models::{
             core::{
                 board::{BoardCard, Tile},
-                card::BattleClass,
+                card::{BattleClass, Card},
             },
             session::Effect,
         },
         test_support::{card, empty_tiles},
         utils::constants::MAX_HAND_CARDS,
     };
-    fn configured_game<'a>(rng: &'a mut ThreadRng) -> Game<'a> {
-        let mut game = Game::new(0.0, rng);
+
+    fn card_signature(card: &Card) -> String {
+        format!(
+            "{}:{}:{}:{}:{}:{}:{}",
+            card.id,
+            card.arrows,
+            card.asset.name,
+            card.stats.attack,
+            card.stats.battle_class,
+            card.stats.phys_defense,
+            card.stats.mag_defense
+        )
+    }
+
+    fn game_signature(game: &Game) -> (Vec<String>, Vec<String>, Vec<String>, String) {
+        let board = (0..crate::utils::constants::BOARD_SIZE)
+            .flat_map(|row| game.board.row(row))
+            .map(|tile| match tile {
+                Tile::Empty => "empty".to_string(),
+                Tile::Blocked => "blocked".to_string(),
+                Tile::Occupied(board_card) => {
+                    format!(
+                        "{}:{}",
+                        board_card.owner_id,
+                        card_signature(&board_card.card)
+                    )
+                }
+            })
+            .collect();
+        let player_hand = game.player.hand.iter().map(card_signature).collect();
+        let cpu_hand = game.cpu.hand.iter().map(card_signature).collect();
+        let active_player = match game.active_player {
+            ActivePlayer::None => "none",
+            ActivePlayer::Player => "player",
+            ActivePlayer::Cpu => "cpu",
+        };
+        let session = format!(
+            "{}:{}:{:?}:{active_player}",
+            game.player.id, game.cpu.id, game.state
+        );
+
+        (board, player_hand, cpu_hand, session)
+    }
+
+    fn configured_game(seed: u64) -> Game {
+        let mut game = Game::new(0.0, GameRng::from_seed(seed));
         game.board = Board::from_tiles(empty_tiles());
         game.player.id = 1;
         game.player.hand = (0..MAX_HAND_CARDS)
@@ -343,9 +396,40 @@ mod tests {
     }
 
     #[test]
+    fn same_seed_and_action_sequence_reproduce_the_entire_game() {
+        const SEED: u64 = 0x5EED_CAFE;
+        let mut first = Game::new(0.25, GameRng::from_seed(SEED));
+        let mut second = Game::new(0.25, GameRng::from_seed(SEED));
+
+        for step in 0..100 {
+            assert_eq!(
+                game_signature(&first),
+                game_signature(&second),
+                "seed {SEED} diverged before step {step}"
+            );
+
+            if first.state == GamePhase::Finished {
+                return;
+            }
+
+            if first.awaiting_input() {
+                let card_id = first.player.hand[0].id;
+                let target = legal_positions(&first.board)[0];
+                let action = GameAction::new(card_id, target);
+                first.play_card(action).unwrap();
+                second.play_card(GameAction::new(card_id, target)).unwrap();
+            } else {
+                first.run().unwrap();
+                second.run().unwrap();
+            }
+        }
+
+        panic!("seed {SEED} did not finish within 100 steps");
+    }
+
+    #[test]
     fn game_start_selects_an_active_player_and_enters_start_turn() {
-        let mut rng = rand::rng();
-        let mut game = configured_game(&mut rng);
+        let mut game = configured_game(1);
         assert_eq!(game.state, GamePhase::NotStarted);
         game.run().unwrap();
         assert_eq!(game.state, GamePhase::StartTurn);
@@ -361,8 +445,7 @@ mod tests {
 
     #[test]
     fn player_turn_rejects_unavailable_position_without_removing_card() {
-        let mut rng = rand::rng();
-        let mut game = configured_game(&mut rng);
+        let mut game = configured_game(2);
         game.active_player = ActivePlayer::Player;
         game.state = GamePhase::StartTurn;
         let mut tiles = empty_tiles();
@@ -380,8 +463,7 @@ mod tests {
 
     #[test]
     fn player_placement_enters_effect_processing_then_end_turn() {
-        let mut rng = rand::rng();
-        let mut game = configured_game(&mut rng);
+        let mut game = configured_game(3);
         game.active_player = ActivePlayer::Player;
         game.state = GamePhase::StartTurn;
         let card_id = game.player.hand[0].id;
@@ -401,8 +483,7 @@ mod tests {
 
     #[test]
     fn cpu_turn_chooses_an_available_position_and_consumes_one_card() {
-        let mut rng = rand::rng();
-        let mut game = configured_game(&mut rng);
+        let mut game = configured_game(4);
         game.active_player = ActivePlayer::Cpu;
         game.state = GamePhase::StartTurn;
         game.run().unwrap();
@@ -413,8 +494,7 @@ mod tests {
 
     #[test]
     fn capture_effect_changes_target_owner_one_effect_per_run() {
-        let mut rng = rand::rng();
-        let mut game = configured_game(&mut rng);
+        let mut game = configured_game(5);
         let mut tiles = empty_tiles();
         tiles[0] = Tile::Occupied(BoardCard {
             owner_id: 1,
@@ -480,8 +560,7 @@ mod tests {
 
     #[test]
     fn victory_propagates_capture_while_defeat_flips_source_and_ends_turn() {
-        let mut rng = rand::rng();
-        let mut game = configured_game(&mut rng);
+        let mut game = configured_game(6);
         let mut tiles = empty_tiles();
         tiles[0] = Tile::Occupied(BoardCard {
             owner_id: 1,
@@ -525,8 +604,7 @@ mod tests {
 
     #[test]
     fn end_turn_finishes_for_full_board_or_two_empty_hands() {
-        let mut rng = rand::rng();
-        let mut game = configured_game(&mut rng);
+        let mut game = configured_game(7);
         game.state = GamePhase::EndTurn;
         game.player.hand.clear();
         game.cpu.hand.clear();
@@ -550,8 +628,7 @@ mod tests {
 
     #[test]
     fn automated_full_game_reaches_completion_and_preserves_card_totals() {
-        let mut rng = rand::rng();
-        let mut game = configured_game(&mut rng);
+        let mut game = configured_game(8);
         game.active_player = ActivePlayer::Player;
         game.state = GamePhase::StartTurn;
         let mut steps = 0;
@@ -577,8 +654,7 @@ mod tests {
 
     #[test]
     fn invalid_missing_card_does_not_change_board() {
-        let mut rng = rand::rng();
-        let mut game = configured_game(&mut rng);
+        let mut game = configured_game(9);
         assert!(
             game.play_card(GameAction::new(999, Position::new(0, 0)))
                 .is_err()

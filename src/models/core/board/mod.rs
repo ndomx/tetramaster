@@ -1,8 +1,6 @@
 use std::array;
 use std::fmt::{Display, Formatter};
 
-use rand::{RngExt, rngs::ThreadRng};
-
 mod board_card;
 mod tile;
 
@@ -17,6 +15,7 @@ use crate::{
     utils::{
         constants::{BOARD_SIZE, TILE_TOTAL},
         helpers::{idx2pos, pos2idx},
+        random::GameRng,
     },
 };
 
@@ -46,7 +45,7 @@ impl Display for PlacementError {
 impl std::error::Error for PlacementError {}
 
 impl Board {
-    pub fn build(density: f64, rng: &mut ThreadRng) -> Self {
+    pub fn build(density: f64, rng: &mut GameRng) -> Self {
         Self {
             tiles: array::from_fn(|_| match rng.random_bool(density) {
                 true => Tile::Blocked,
@@ -179,7 +178,7 @@ mod tests {
 
     #[test]
     fn construction_lookup_rows_and_counts_distinguish_tile_states() {
-        let mut rng = rand::rng();
+        let mut rng = GameRng::from_seed(1);
         let empty = Board::build(0.0, &mut rng);
         assert_eq!(empty.count_empty(), TILE_TOTAL);
         assert_eq!(empty.row(0).len(), BOARD_SIZE);
