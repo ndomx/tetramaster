@@ -1,8 +1,8 @@
 use std::sync::LazyLock;
 
-use crate::models::{
-    battle_class::BattleClass, card::Card, card_definition::CardDefinition, card_stats::CardStats,
-    tile::Tile,
+use crate::models::core::{
+    board::Tile,
+    card::{BattleClass, Card, CardDefinition, CardStats},
 };
 
 static PHYSICAL: LazyLock<CardDefinition> = LazyLock::new(|| asset(BattleClass::Physical));

@@ -1,4 +1,4 @@
-use crate::models::position::Position;
+use crate::models::core::geometry::Position;
 
 pub struct GameAction {
     pub card_id: u64,

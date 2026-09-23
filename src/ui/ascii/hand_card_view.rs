@@ -1,7 +1,7 @@
 use crossterm::style::Stylize;
 
 use crate::{
-    models::{card::Card, direction::Direction},
+    models::core::{card::Card, geometry::Direction},
     ui::ascii::{
         ascii_view::AsciiView,
         constants::{

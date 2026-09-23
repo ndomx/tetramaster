@@ -1,4 +1,4 @@
-use crate::models::board_card::BoardCard;
+use super::BoardCard;
 
 #[derive(PartialEq, Eq)]
 pub enum Tile {

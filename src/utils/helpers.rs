@@ -1,5 +1,5 @@
 use crate::{
-    models::position::Position,
+    models::core::geometry::Position,
     utils::constants::{BOARD_SIZE, TILE_TOTAL},
 };
 

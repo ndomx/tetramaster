@@ -1,21 +1,26 @@
-# M1.04 - Separate Domain And Board Responsibilities
+# M1.04 - Separate Core And Session Model Responsibilities
 
 ## Objective
 
-Move data-centric types out of `models` and make board invariants explicit without
-moving combat, capture, AI, session, or presentation behavior with them.
+Organize `models` around an essential core and application-level session state,
+and make board invariants explicit without moving combat, capture, AI, or
+presentation behavior with them.
 
 ## Prerequisites
 
 - M1.03 is complete.
-- The human has approved the exact target module tree for the types found in the
-  current repository.
+- The human has approved `models::{core, session}` and the nested `board`, `card`,
+  and `geometry` core groups as the exact target module tree.
 
 ## Scope
 
-- Create `domain` modules for cards, definitions, stats, battle class, directions,
-  positions, players, tiles, `BoardCard`, and board storage.
-- Keep `GamePhase`, pending work, and session coordination outside `domain`.
+- Create `models::core::card` for cards, definitions, stats, and battle class.
+- Create `models::core::board` for board storage, tiles, and `BoardCard`.
+- Create `models::core::geometry` for directions and positions, and keep `Player`
+  at the core root.
+- Create `models::session` for `Game`, `GameAction`, `GamePhase`, active-player
+  state, effects, and pending work.
+- Enforce the dependency direction `models::session -> models::core`.
 - Give the board one checked placement operation that rejects out-of-bounds,
   blocked, and occupied positions without mutation.
 - Keep local queries and invariants near the data they govern.
@@ -28,7 +33,7 @@ moving combat, capture, AI, session, or presentation behavior with them.
 
 ## Acceptance Criteria
 
-- Domain modules do not depend on TUI, session, AI, or command/rule orchestration.
+- Core model modules do not depend on TUI, session, AI, or command/rule orchestration.
 - Failed placement is atomic and covered by tests.
 - Existing behavior tests and the TUI remain green.
 - `AGENTS.md` is updated in this same step to describe the new module layout.

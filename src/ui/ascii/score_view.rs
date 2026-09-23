@@ -1,7 +1,7 @@
 use crossterm::style::{Color, Stylize};
 
 use crate::{
-    models::game::Game,
+    models::session::Game,
     ui::ascii::{ascii_view::AsciiView, constants::CARD_WIDTH},
     utils::constants::BOARD_SIZE,
 };

@@ -40,6 +40,27 @@ force until the human explicitly changes them.
 - Prefer `CardTileView`, `BlockedTileView`, and `EmptyTileView` for TUI rendering
   names. Dioxus may represent all tile states with `BoardCell`.
 
+## Model Module Layout
+
+- `models` remains the umbrella for game data rather than introducing a separate
+  top-level `domain` module.
+- `models::core` contains every essential Tetra Master concept and owns local
+  invariants. It is grouped into `board`, `card`, and `geometry`; `Player` stays
+  directly under `core` because it does not naturally belong to those groups.
+- `models::session` contains application-level state and workflow for a running
+  match, including actions, active-player state, effects, phases, pending work,
+  and `Game` until later steps evolve it into `GameSession`.
+- The dependency direction is `models::session -> models::core`. Core models
+  must not depend on session coordination, commands/rules, AI, or UI code.
+- Important types are re-exported from their conceptual group, producing paths
+  such as `models::core::board::Board`, `models::core::card::Card`,
+  `models::core::geometry::Position`, and `models::session::Game`.
+- Assets own catalog record parsing and construct `CardDefinition`; core card
+  definitions do not depend on the assets layer.
+- Do not add speculative model submodules. Frontend contract types introduced in
+  M1.09 stay with `models::session` unless their actual size and responsibilities
+  justify a separately approved grouping.
+
 ### M1.03 Transitional Naming Decisions
 
 - Rename the existing placement-request struct from `Action` to `GameAction`

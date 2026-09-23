@@ -15,7 +15,7 @@ any dependency, catalog-format, or Dioxus work begins.
 - Audit module dependency direction and public visibility.
 - Remove obsolete helpers and compatibility shims only when tests prove them
   unused.
-- Confirm domain, rules, game, and AI code contain no Crossterm, terminal I/O,
+- Confirm core models, rules, game, and AI code contain no Crossterm, terminal I/O,
   presentation delays, or Dioxus concepts.
 - Run the complete native verification matrix and manually play a seeded terminal
   match.

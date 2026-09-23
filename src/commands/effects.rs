@@ -1,8 +1,11 @@
 use std::collections::VecDeque;
 
 use crate::models::{
-    board::Board, board_card::BoardCard, direction::Direction, effect::Effect,
-    pending_effect::PendingEffect, position::Position,
+    core::{
+        board::{Board, BoardCard},
+        geometry::{Direction, Position},
+    },
+    session::{Effect, PendingEffect},
 };
 
 pub struct GenerateEffectsParams<'a> {
@@ -89,8 +92,11 @@ mod tests {
     use super::*;
     use crate::{
         models::{
-            battle_class::BattleClass, board::Board, board_card::BoardCard, effect::Effect,
-            tile::Tile,
+            core::{
+                board::{Board, BoardCard, Tile},
+                card::BattleClass,
+            },
+            session::Effect,
         },
         test_support::{card, empty_tiles},
         utils::helpers::pos2idx,

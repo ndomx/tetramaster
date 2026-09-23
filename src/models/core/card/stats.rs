@@ -1,6 +1,6 @@
 use rand::random_range;
 
-use crate::models::battle_class::BattleClass;
+use super::BattleClass;
 
 #[derive(PartialEq, Eq, Debug)]
 pub struct CardStats {

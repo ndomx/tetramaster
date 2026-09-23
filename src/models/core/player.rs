@@ -1,4 +1,4 @@
-use crate::models::card::Card;
+use super::card::Card;
 
 #[derive(PartialEq, Eq)]
 pub struct Player {
@@ -19,7 +19,7 @@ impl Player {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{models::battle_class::BattleClass, test_support::card};
+    use crate::{models::core::card::BattleClass, test_support::card};
 
     #[test]
     fn pop_card_removes_only_the_first_matching_identity() {

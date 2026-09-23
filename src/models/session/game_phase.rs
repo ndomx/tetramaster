@@ -1,6 +1,6 @@
 use std::collections::VecDeque;
 
-use crate::models::pending_effect::PendingEffect;
+use super::PendingEffect;
 
 #[derive(PartialEq, Debug)]
 pub enum GamePhase {
