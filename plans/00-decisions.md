@@ -113,7 +113,17 @@ with the human before the listed implementation step changes or formalizes it.
 | --- | --- | --- |
 | Is a tied final score a draw or a CPU win? | Existing winner behavior | M1.09 final result API |
 | Should generated stat ranges preserve their current distribution? | Characterization tests | M1.07 RNG implementation |
-| What is the exact combo traversal and ordering? | Characterization tests | M1.06 rule extraction |
+| What is the exact combo traversal and ordering? | Characterized behavior retained | Resolved for M1.06; see below |
 | Does every playable card require a unique runtime ID? | Existing random ID behavior | M1.09 public action/event IDs |
 
 M1.01 records current behavior without treating it as the final design decision.
+
+### M1.06 Combat And Combo Decisions
+
+- M1.06 preserves the characterized deterministic ordering for multiple battles.
+  This is an internal ordering choice, not a final frontend contract; a later
+  rules/API step may accept an injected order, including a randomized order.
+- M1.06 preserves one-hop combo discovery and queues each combo capture as an
+  individual pending effect. The original game presents all captures from one
+  combo simultaneously; a later event or animation design may group them without
+  silently changing the resulting ownership transitions.

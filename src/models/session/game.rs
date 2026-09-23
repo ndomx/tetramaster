@@ -1,22 +1,38 @@
+use std::collections::VecDeque;
+
 use rand::{Rng, RngExt, rngs::ThreadRng, seq::IndexedRandom};
 
 use crate::{
     assets::CARDS,
-    commands::{
-        AttackOutcome, AttackParams, GenerateEffectsParams, attack, generate_effects,
-        spread_victory_effects,
-    },
     models::{
         core::{Player, board::Board, card::Card, geometry::Position},
         session::{ActivePlayer, GameAction, GamePhase, PendingEffect},
     },
-    rules::placement::{is_legal_position, legal_positions},
+    rules::{
+        capture::{Capture, CaptureKind, apply_capture},
+        combat::{CombatOutcome, CombatParams, resolve_combat},
+        combo::{ComboCapture, discover_combo_captures},
+        placement::{
+            PlacementInteractionKind, discover_interactions, is_legal_position, legal_positions,
+        },
+    },
     utils::{constants::MAX_HAND_CARDS, random::VecRandomExt},
 };
 
 use super::Effect;
 
 type TurnResult = Result<(), String>;
+
+fn enqueue_combo_captures(pending: &mut VecDeque<PendingEffect>, combo_captures: &[ComboCapture]) {
+    for capture in combo_captures.iter().rev() {
+        pending.retain(|effect| effect.target_card_id != capture.target_card_id);
+        pending.push_front(PendingEffect::new(
+            capture.source_card_id,
+            capture.target_card_id,
+            Effect::DirectCapture,
+        ));
+    }
+}
 
 pub struct Game<'a> {
     pub board: Board,
@@ -171,10 +187,21 @@ impl<'a> Game<'a> {
         self.board
             .place_card(card, target, owner_id)
             .map_err(|error| error.to_string())?;
-        let effects = generate_effects(GenerateEffectsParams {
-            position: target,
-            board: &self.board,
-        })?;
+        let effects = discover_interactions(&self.board, target)
+            .map_err(|error| error.to_string())?
+            .into_iter()
+            .map(|interaction| {
+                let effect = match interaction.kind {
+                    PlacementInteractionKind::Battle => Effect::Attack,
+                    PlacementInteractionKind::DirectCapture => Effect::DirectCapture,
+                };
+                PendingEffect::new(
+                    interaction.source_card_id,
+                    interaction.target_card_id,
+                    effect,
+                )
+            })
+            .collect();
 
         self.state = GamePhase::ApplyEffects { pending: effects };
 
@@ -211,50 +238,79 @@ impl<'a> Game<'a> {
             .position_of_card(pending_effect.target_card_id)
             .ok_or("Cannot find target")?;
 
-        let result = attack(AttackParams {
+        let result = resolve_combat(CombatParams {
             attacker: &source_tc.card,
             defender: &target_tc.card,
-        })?;
+        });
 
         match result {
-            AttackOutcome::Victory => self.on_victory(source_tc.owner_id, target_pos),
-            AttackOutcome::Defeat => self.on_defeat(target_tc.owner_id, source_pos),
+            CombatOutcome::Victory => self.on_victory(source_tc.owner_id, target_pos),
+            CombatOutcome::Defeat => self.on_defeat(target_tc.owner_id, source_pos),
         }
     }
 
     fn capture(&mut self, pending_effect: PendingEffect) -> TurnResult {
-        let active_player = self.get_active_player()?;
-        let (_, target) = self
-            .board
-            .position_of_card(pending_effect.target_card_id)
-            .ok_or("Unable to find target")?;
-
-        self.board.set_owner(target, active_player.id)?;
+        let active_player_id = self.get_active_player()?.id;
+        apply_capture(
+            &mut self.board,
+            Capture {
+                card_id: pending_effect.target_card_id,
+                new_owner_id: active_player_id,
+                kind: CaptureKind::Direct,
+            },
+        )
+        .map_err(|error| error.to_string())?;
 
         Ok(())
     }
 
     fn on_victory(&mut self, owner_id: u64, pos: Position) -> TurnResult {
-        self.board.set_owner(pos, owner_id)?;
+        let target_card_id = self
+            .board
+            .get_card(pos)
+            .ok_or("Unable to find target")?
+            .card
+            .id;
+        apply_capture(
+            &mut self.board,
+            Capture {
+                card_id: target_card_id,
+                new_owner_id: owner_id,
+                kind: CaptureKind::CombatVictory,
+            },
+        )
+        .map_err(|error| error.to_string())?;
+
+        let combo_captures =
+            discover_combo_captures(&self.board, pos).map_err(|error| error.to_string())?;
 
         let GamePhase::ApplyEffects { pending } = &mut self.state else {
             return Err("skip side effects".into());
         };
 
-        spread_victory_effects(
-            GenerateEffectsParams {
-                position: pos,
-                board: &self.board,
-            },
-            pending,
-        )?;
+        enqueue_combo_captures(pending, &combo_captures);
 
         Ok(())
     }
 
     fn on_defeat(&mut self, owner_id: u64, pos: Position) -> TurnResult {
+        let source_card_id = self
+            .board
+            .get_card(pos)
+            .ok_or("Unable to find source")?
+            .card
+            .id;
+        apply_capture(
+            &mut self.board,
+            Capture {
+                card_id: source_card_id,
+                new_owner_id: owner_id,
+                kind: CaptureKind::CombatDefeat,
+            },
+        )
+        .map_err(|error| error.to_string())?;
         self.state = GamePhase::EndTurn;
-        self.board.set_owner(pos, owner_id)
+        Ok(())
     }
 }
 
@@ -272,8 +328,6 @@ mod tests {
         test_support::{card, empty_tiles},
         utils::constants::MAX_HAND_CARDS,
     };
-    use std::collections::VecDeque;
-
     fn configured_game<'a>(rng: &'a mut ThreadRng) -> Game<'a> {
         let mut game = Game::new(0.0, rng);
         game.board = Board::from_tiles(empty_tiles());
@@ -385,6 +439,43 @@ mod tests {
         );
         game.run().unwrap();
         assert_eq!(game.state, GamePhase::EndTurn);
+    }
+
+    #[test]
+    fn combo_captures_precede_and_replace_pending_effects_for_the_same_targets() {
+        let mut pending = VecDeque::from([
+            PendingEffect::new(99, 20, Effect::Attack),
+            PendingEffect::new(99, 30, Effect::DirectCapture),
+        ]);
+
+        enqueue_combo_captures(
+            &mut pending,
+            &[
+                ComboCapture {
+                    source_card_id: 10,
+                    target_card_id: 40,
+                },
+                ComboCapture {
+                    source_card_id: 10,
+                    target_card_id: 20,
+                },
+            ],
+        );
+
+        assert_eq!(pending.len(), 3);
+        assert_eq!(
+            pending
+                .iter()
+                .map(|effect| (effect.source_card_id, effect.target_card_id))
+                .collect::<Vec<_>>(),
+            vec![(10, 40), (10, 20), (99, 30)]
+        );
+        assert!(
+            pending
+                .iter()
+                .take(2)
+                .all(|effect| effect.effect == Effect::DirectCapture)
+        );
     }
 
     #[test]
