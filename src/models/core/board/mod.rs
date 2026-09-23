@@ -1,10 +1,18 @@
 use std::array;
+use std::fmt::{Display, Formatter};
 
 use rand::{RngExt, rngs::ThreadRng, seq::IteratorRandom};
 
+mod board_card;
+mod tile;
+
+pub use board_card::BoardCard;
+pub use tile::Tile;
+
 use crate::{
-    models::{
-        board_card::BoardCard, card::Card, direction::Direction, position::Position, tile::Tile,
+    models::core::{
+        card::Card,
+        geometry::{Direction, Position},
     },
     utils::{
         constants::{BOARD_SIZE, TILE_TOTAL},
@@ -15,6 +23,27 @@ use crate::{
 pub struct Board {
     tiles: [Tile; TILE_TOTAL],
 }
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum PlacementError {
+    OutOfBounds(Position),
+    Blocked(Position),
+    Occupied(Position),
+}
+
+impl Display for PlacementError {
+    fn fmt(&self, formatter: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::OutOfBounds(position) => {
+                write!(formatter, "position {position:?} is out of bounds")
+            }
+            Self::Blocked(position) => write!(formatter, "position {position:?} is blocked"),
+            Self::Occupied(position) => write!(formatter, "position {position:?} is occupied"),
+        }
+    }
+}
+
+impl std::error::Error for PlacementError {}
 
 impl Board {
     pub fn build(density: f64, rng: &mut ThreadRng) -> Self {
@@ -62,10 +91,14 @@ impl Board {
         card: Card,
         target: Position,
         owner_id: u64,
-    ) -> Result<(), String> {
-        let Some(idx) = pos2idx(target) else {
-            return Err(format!("invalid position {:?}", target));
-        };
+    ) -> Result<(), PlacementError> {
+        let idx = pos2idx(target).ok_or(PlacementError::OutOfBounds(target))?;
+
+        match &self.tiles[idx] {
+            Tile::Empty => {}
+            Tile::Blocked => return Err(PlacementError::Blocked(target)),
+            Tile::Occupied(_) => return Err(PlacementError::Occupied(target)),
+        }
 
         self.tiles[idx] = Tile::Occupied(BoardCard { owner_id, card });
 
@@ -151,7 +184,7 @@ impl Board {
 mod tests {
     use super::*;
     use crate::{
-        models::{battle_class::BattleClass, tile::Tile},
+        models::core::card::BattleClass,
         test_support::{card, empty_tiles},
     };
 
@@ -205,17 +238,47 @@ mod tests {
     }
 
     #[test]
-    fn current_low_level_placement_overwrites_non_empty_tiles() {
+    fn failed_placement_is_atomic_for_every_invalid_target() {
         let mut tiles = empty_tiles();
         tiles[0] = Tile::Blocked;
+        tiles[1] = Tile::Occupied(BoardCard {
+            owner_id: 4,
+            card: card(2, 0, BattleClass::Physical, 0, 0, 0),
+        });
         let mut board = Board::from_tiles(tiles);
-        board
-            .place_card(
-                card(1, 0, BattleClass::Physical, 0, 0, 0),
+
+        assert_eq!(
+            board.place_card(
+                card(3, 0, BattleClass::Physical, 0, 0, 0),
+                Position::new(BOARD_SIZE, 0),
+                9,
+            ),
+            Err(PlacementError::OutOfBounds(Position::new(BOARD_SIZE, 0)))
+        );
+        assert_eq!(board.count_empty(), TILE_TOTAL - 2);
+
+        assert_eq!(
+            board.place_card(
+                card(4, 0, BattleClass::Physical, 0, 0, 0),
                 Position::new(0, 0),
                 9,
-            )
-            .unwrap();
-        assert!(board.get_card(Position::new(0, 0)).is_some());
+            ),
+            Err(PlacementError::Blocked(Position::new(0, 0)))
+        );
+        assert!(matches!(
+            board.get(Position::new(0, 0)),
+            Some(Tile::Blocked)
+        ));
+
+        assert_eq!(
+            board.place_card(
+                card(5, 0, BattleClass::Physical, 0, 0, 0),
+                Position::new(0, 1),
+                9,
+            ),
+            Err(PlacementError::Occupied(Position::new(0, 1)))
+        );
+        let occupied = board.get_card(Position::new(0, 1)).unwrap();
+        assert_eq!((occupied.owner_id, occupied.card.id), (4, 2));
     }
 }

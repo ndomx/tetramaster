@@ -7,7 +7,12 @@ This is a Rust terminal implementation of Final Fantasy IX Tetra Master.
 - `src/lib.rs` owns the shared crate module declarations.
 - `src/main.rs` owns the executable loop and terminal orchestration, importing
   shared code through the library crate.
-- `src/models/` currently contains core game data and state-machine types.
+- `src/models/core/` contains the essential game model, grouped into `board`,
+  `card`, and `geometry`, plus the player model. Core models own only their local
+  invariants and must not depend on session, rules, AI, or UI code.
+- `src/models/session/` contains application-level match state and coordination
+  types such as `Game`, `GameAction`, `GamePhase`, and pending effects. Session
+  models may depend on core models, never the reverse.
 - `src/commands/` contains rule operations such as battle resolution and effect generation.
 - `src/ui/` contains terminal and ASCII rendering.
 - `src/assets/` contains static card records and parsing into card assets.
@@ -64,10 +69,10 @@ baseline assertion requires explicit human approval of the behavior change.
 
 ## Rust Style
 
-- Prefer typed domain concepts over raw primitives when it clarifies intent.
+- Prefer typed core game concepts over raw primitives when it clarifies intent.
 - Keep randomness injectable for rule logic so tests can be deterministic.
 - Prefer `Result<T, GameError>` or focused error enums over `Result<T, String>` once an area stabilizes.
-- Avoid printing from domain/rule modules. Return data to the caller and let UI decide how to display it.
+- Avoid printing from core model or rule modules. Return data to the caller and let UI decide how to display it.
 - Add tests around combat, effect ordering, captures, turn transitions, and board bounds before large refactors.
 
 ## Current Design Direction

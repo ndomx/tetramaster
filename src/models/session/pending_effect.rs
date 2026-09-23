@@ -1,4 +1,4 @@
-use crate::models::effect::Effect;
+use super::Effect;
 
 #[derive(PartialEq, Debug)]
 pub struct PendingEffect {

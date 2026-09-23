@@ -29,14 +29,17 @@ human instruction changes the direction, stop and resolve that with the human.
 
 ```text
 TUI adapter ---------------\
-                            +-> frontend contract -> GameSession -> rules -> domain
+                            +-> frontend contract -> GameSession -> rules -> models::core
 future Dioxus web adapter -/                           |
                                                         +-> AI
 
-embedded catalog -> domain definitions
+embedded catalog -> models::core card definitions
 ```
 
-- `domain`: cards, board occupancy, positions, players, and local invariants.
+- `models::core`: essential game concepts and local invariants, grouped under
+  `board`, `card`, and `geometry`, with `Player` at the core root.
+- `models::session`: application-level match state and coordination. It may
+  depend on core models, but core models must not depend on it.
 - `rules`: deterministic placement, combat, capture, and combo operations.
 - `game`: session orchestration and the frontend-neutral contract.
 - `ai`: CPU action selection from engine-provided legal actions.
@@ -61,7 +64,7 @@ Dioxus, platform features, and separate binaries.
 - [x] [M1.01 - Lock current behavior with comprehensive tests](m1-01-comprehensive-tests.md)
 - [x] [M1.02 - Establish the library boundary](m1-02-library-boundary.md)
 - [x] [M1.03 - Apply agreed vocabulary](m1-03-vocabulary.md)
-- [ ] [M1.04 - Separate domain and board responsibilities](m1-04-domain-board.md)
+- [x] [M1.04 - Separate core and session model responsibilities](m1-04-domain-board.md)
 - [ ] [M1.05 - Extract placement rules](m1-05-placement-rules.md)
 - [ ] [M1.06 - Extract combat, capture, and combo rules](m1-06-combat-capture.md)
 - [ ] [M1.07 - Centralize randomness](m1-07-randomness.md)
@@ -85,7 +88,7 @@ Dioxus, platform features, and separate binaries.
   is complete and green.
 - Preserve current game behavior during structural work. Characterize suspected
   bugs before changing them and obtain explicit approval for the behavior change.
-- Keep UI concerns and framework types out of domain, rules, AI, and session code.
+- Keep UI concerns and framework types out of core models, rules, AI, and session code.
 - Keep the TUI playable after every completed Milestone 1 step.
 - Do not expose hidden CPU cards through frontend snapshots.
 - Invalid actions must not partially mutate a session.

@@ -1,7 +1,7 @@
 use std::{io::stdout, thread::sleep, time::Duration};
 
 use tetramaster::{
-    models::{game::Game, game_phase::GamePhase},
+    models::session::{Game, GamePhase},
     ui::terminal::Terminal,
 };
 

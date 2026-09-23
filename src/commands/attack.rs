@@ -1,6 +1,6 @@
 use crate::{
     min,
-    models::{battle_class::BattleClass, card::Card},
+    models::core::card::{BattleClass, Card},
 };
 
 pub struct AttackParams<'a> {

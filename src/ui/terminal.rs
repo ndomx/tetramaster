@@ -10,7 +10,10 @@ use crossterm::{
 };
 
 use crate::{
-    models::{action::GameAction, card::Card, game::Game, position::Position},
+    models::{
+        core::{card::Card, geometry::Position},
+        session::{Game, GameAction},
+    },
     ui::ascii::{
         ascii_view::AsciiView, board_view::BoardView, hand_card_view::HandCardView,
         score_view::ScoreView,

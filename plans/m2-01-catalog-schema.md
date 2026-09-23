@@ -19,7 +19,7 @@ canonical artwork metadata before building the web UI.
 - Convert every existing catalog record without changing its canonical values.
 - Store stats as named expanded fields and battle classes as typed variants.
 - Add artwork metadata to `CardDefinition` without putting decoded image data in
-  the domain model.
+  the core card model.
 - Keep the catalog embedded, immutable, and initialized once.
 - Validate unique definitions, required fields, stat ranges, and artwork paths
   with entry-specific errors.

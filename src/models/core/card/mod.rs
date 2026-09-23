@@ -2,11 +2,15 @@ use std::fmt::Display;
 
 use rand::random;
 
-use crate::models::{
-    card_definition::CardDefinition,
-    card_stats::CardStats,
-    direction::Direction::{self},
-};
+mod battle_class;
+mod definition;
+mod stats;
+
+pub use battle_class::BattleClass;
+pub use definition::CardDefinition;
+pub use stats::CardStats;
+
+use crate::models::core::geometry::Direction;
 
 #[derive(PartialEq, Eq)]
 pub struct Card {
@@ -75,7 +79,7 @@ impl Display for Card {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{models::battle_class::BattleClass, test_support::card};
+    use crate::test_support::card;
 
     #[test]
     fn arrow_mask_detects_and_orders_all_facing_directions() {

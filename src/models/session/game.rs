@@ -7,13 +7,13 @@ use crate::{
         spread_victory_effects,
     },
     models::{
-        action::GameAction, active_player::ActivePlayer, board::Board, card::Card,
-        game_phase::GamePhase, pending_effect::PendingEffect, player::Player, position::Position,
+        core::{Player, board::Board, card::Card, geometry::Position},
+        session::{ActivePlayer, GameAction, GamePhase, PendingEffect},
     },
     utils::{constants::MAX_HAND_CARDS, random::VecRandomExt},
 };
 
-use super::effect::Effect;
+use super::Effect;
 
 type TurnResult = Result<(), String>;
 
@@ -167,7 +167,9 @@ impl<'a> Game<'a> {
     }
 
     fn place_card(&mut self, card: Card, owner_id: u64, target: Position) -> TurnResult {
-        self.board.place_card(card, target, owner_id)?;
+        self.board
+            .place_card(card, target, owner_id)
+            .map_err(|error| error.to_string())?;
         let effects = generate_effects(GenerateEffectsParams {
             position: target,
             board: &self.board,
@@ -259,7 +261,13 @@ impl<'a> Game<'a> {
 mod tests {
     use super::*;
     use crate::{
-        models::{battle_class::BattleClass, board_card::BoardCard, effect::Effect, tile::Tile},
+        models::{
+            core::{
+                board::{BoardCard, Tile},
+                card::BattleClass,
+            },
+            session::Effect,
+        },
         test_support::{card, empty_tiles},
         utils::constants::MAX_HAND_CARDS,
     };
@@ -391,7 +399,7 @@ mod tests {
             owner_id: 2,
             card: card(
                 20,
-                1 << crate::models::direction::Direction::E as u8,
+                1 << crate::models::core::geometry::Direction::E as u8,
                 BattleClass::Physical,
                 0,
                 0,
