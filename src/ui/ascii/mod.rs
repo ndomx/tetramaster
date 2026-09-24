@@ -4,6 +4,5 @@ pub mod board_view;
 pub mod card_tile_view;
 pub mod constants;
 pub mod empty_tile_view;
-pub mod hand_card_view;
 pub mod score_view;
 pub mod tile_view;

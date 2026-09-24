@@ -1,7 +1,7 @@
 use crossterm::style::{Color, Stylize};
 
 use crate::{
-    models::core::{card::Card, geometry::Direction},
+    models::{core::geometry::Direction, session::CardSnapshot},
     ui::ascii::{
         ascii_view::AsciiView,
         constants::{
@@ -13,13 +13,19 @@ use crate::{
 const FRONT_COLOR: Color = Color::Yellow;
 
 pub struct CardTileView<'a> {
-    card: &'a Card,
+    card: &'a CardSnapshot,
     back_color: Color,
 }
 
 impl<'a> CardTileView<'a> {
-    pub fn new(card: &'a Card, back_color: Color) -> Self {
+    pub fn new(card: &'a CardSnapshot, back_color: Color) -> Self {
         Self { card, back_color }
+    }
+
+    fn facing(&self) -> impl Iterator<Item = Direction> + '_ {
+        (0..8)
+            .filter(|&offset| self.card.arrows & (1 << offset) != 0)
+            .map(|offset| Direction::try_from(offset).expect("offset is a valid direction"))
     }
 
     fn top_line(&self) -> String {
@@ -27,7 +33,7 @@ impl<'a> CardTileView<'a> {
         let mut north = " ";
         let mut northeast = " ";
 
-        self.card.facing().iter().for_each(|d| match *d {
+        self.facing().for_each(|d| match d {
             Direction::NW => northwest = "◤",
             Direction::N => north = "▲",
             Direction::NE => northeast = "◥",
@@ -41,7 +47,7 @@ impl<'a> CardTileView<'a> {
         let mut west = " ";
         let mut east = " ";
 
-        self.card.facing().iter().for_each(|d| match *d {
+        self.facing().for_each(|d| match d {
             Direction::W => west = "◀",
             Direction::E => east = "▶",
             _ => {}
@@ -50,7 +56,7 @@ impl<'a> CardTileView<'a> {
         format!(
             "│{}{:^CARD_CONTENT_SPACE$}{}│",
             west,
-            self.card.format_stats(),
+            format_stats(self.card),
             east
         )
     }
@@ -60,7 +66,7 @@ impl<'a> CardTileView<'a> {
         let mut south = " ";
         let mut southeast = " ";
 
-        self.card.facing().iter().for_each(|d| match *d {
+        self.facing().for_each(|d| match d {
             Direction::SW => southwest = "◣",
             Direction::S => south = "▼",
             Direction::SE => southeast = "◢",
@@ -71,8 +77,19 @@ impl<'a> CardTileView<'a> {
     }
 
     fn name_line(&self) -> String {
-        format!("│ {:^CARD_CONTENT_SPACE$} │", self.card.asset.name)
+        format!("│ {:^CARD_CONTENT_SPACE$} │", self.card.name)
     }
+}
+
+fn format_stats(card: &CardSnapshot) -> String {
+    let attack = card.stats.attack >> 4;
+    let physical_defense = card.stats.phys_defense >> 4;
+    let magical_defense = card.stats.mag_defense >> 4;
+
+    format!(
+        "{attack:X}{}{physical_defense:X}{magical_defense:X}",
+        card.stats.battle_class
+    )
 }
 
 impl<'a> AsciiView for CardTileView<'a> {

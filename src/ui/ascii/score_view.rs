@@ -1,18 +1,18 @@
 use crossterm::style::{Color, Stylize};
 
 use crate::{
-    models::session::Game,
+    models::session::GameSnapshot,
     ui::ascii::{ascii_view::AsciiView, constants::CARD_WIDTH},
     utils::constants::BOARD_SIZE,
 };
 
 pub struct ScoreView<'a> {
-    game: &'a Game,
+    snapshot: &'a GameSnapshot,
 }
 
 impl<'a> ScoreView<'a> {
-    pub fn new(game: &'a Game) -> Self {
-        Self { game }
+    pub fn new(snapshot: &'a GameSnapshot) -> Self {
+        Self { snapshot }
     }
 }
 
@@ -26,8 +26,8 @@ impl<'a> AsciiView for ScoreView<'a> {
     }
 
     fn line(&self, _line: usize) -> String {
-        let player_score = self.game.player_score().to_string();
-        let cpu_score = self.game.cpu_score().to_string();
+        let player_score = self.snapshot.human_score.to_string();
+        let cpu_score = self.snapshot.cpu_score.to_string();
 
         let plain = format!("Player {player_score} | {cpu_score} CPU");
 

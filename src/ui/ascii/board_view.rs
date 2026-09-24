@@ -1,10 +1,7 @@
 use crossterm::style::Color;
 
 use crate::{
-    models::{
-        core::board::{BoardCard, Tile},
-        session::Game,
-    },
+    models::session::{BoardTileSnapshot, CardSnapshot, GameSnapshot, PlayerSide},
     ui::ascii::{
         ascii_view::AsciiView,
         blocked_tile_view::BlockedTileView,
@@ -17,36 +14,38 @@ use crate::{
 };
 
 pub struct BoardView<'a> {
-    game: &'a Game,
+    snapshot: &'a GameSnapshot,
 }
 
 impl<'a> BoardView<'a> {
-    pub fn new(game: &'a Game) -> Self {
-        Self { game }
+    pub fn new(snapshot: &'a GameSnapshot) -> Self {
+        Self { snapshot }
     }
 
     fn row_tiles(&self, line: usize) -> Vec<TileView<'a>> {
         let row = line / CARD_HEIGHT;
-        let tiles = self.game.board.row(row);
+        let start = row * BOARD_SIZE;
+        let tiles = &self.snapshot.board[start..start + BOARD_SIZE];
 
         tiles
             .iter()
             .map(|t| match t {
-                Tile::Empty => TileView::Empty(EmptyTileView {}),
-                Tile::Blocked => TileView::Block(BlockedTileView {}),
-                Tile::Occupied(played_card) => TileView::Card(self.build_card_view(played_card)),
+                BoardTileSnapshot::Empty => TileView::Empty(EmptyTileView {}),
+                BoardTileSnapshot::Blocked => TileView::Block(BlockedTileView {}),
+                BoardTileSnapshot::Occupied { owner, card } => {
+                    TileView::Card(self.build_card_view(*owner, card))
+                }
             })
             .collect()
     }
 
-    fn build_card_view(&self, played_card: &'a BoardCard) -> CardTileView<'a> {
-        let color = if played_card.owner_id == self.game.player.id {
-            Color::Blue
-        } else {
-            Color::Red
+    fn build_card_view(&self, owner: PlayerSide, card: &'a CardSnapshot) -> CardTileView<'a> {
+        let color = match owner {
+            PlayerSide::Human => Color::Blue,
+            PlayerSide::Cpu => Color::Red,
         };
 
-        CardTileView::new(&played_card.card, color)
+        CardTileView::new(card, color)
     }
 }
 
