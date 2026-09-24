@@ -104,6 +104,23 @@ Candidate event families are game start, turn start, card placement, combat
 resolution, ownership change, turn end, and game finish. Exact variant payloads
 must be agreed with the human during M1.09 before implementation.
 
+### M1.09 Frontend Contract Decisions
+
+- A tied final score is represented explicitly as `GameResult::Draw`.
+- Runtime card IDs remain `u64` random values and are guaranteed unique within a
+  session by regenerating a card if its ID collides during hand construction.
+- Each successful `dispatch` or `advance` returns exactly one observable event.
+  Internal bookkeeping is collapsed until that event or a stable interaction
+  state is reached.
+- The initial event variants are game started, turn started, card placed, combat
+  resolved, ownership changed, turn ended, and game finished. Combat resolution
+  and its resulting ownership change are separate transitions so snapshots show
+  state after exactly the reported event.
+- Public ownership uses `PlayerSide::{Human, Cpu}` rather than exposing internal
+  player IDs. Snapshots include visible board and card data, the human hand, CPU
+  hand count, scores, phase, result, and legal human actions; CPU cards remain
+  hidden.
+
 ## Deferred Game Rules
 
 Structural steps preserve and characterize current behavior. Resolve each item

@@ -13,20 +13,21 @@ pub struct CpuMoveInput<'a> {
 }
 
 pub fn choose_random_action(input: CpuMoveInput<'_>, rng: &mut GameRng) -> Option<GameAction> {
-    let positions = input.legal_actions.iter().map(|action| action.target).fold(
-        Vec::<Position>::new(),
-        |mut positions, target| {
+    let positions = input
+        .legal_actions
+        .iter()
+        .map(|action| action.position())
+        .fold(Vec::<Position>::new(), |mut positions, target| {
             if !positions.contains(&target) {
                 positions.push(target);
             }
             positions
-        },
-    );
+        });
     let target = rng.choose(&positions).copied()?;
     let actions = input
         .legal_actions
         .iter()
-        .filter(|action| action.target == target)
+        .filter(|action| action.position() == target)
         .collect::<Vec<_>>();
 
     rng.choose(&actions).copied().copied()
