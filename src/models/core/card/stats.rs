@@ -1,7 +1,7 @@
 use super::BattleClass;
 use crate::utils::random::GameRng;
 
-#[derive(PartialEq, Eq, Debug)]
+#[derive(PartialEq, Eq, Debug, Clone)]
 pub struct CardStats {
     pub attack: u8,
     pub battle_class: BattleClass,
