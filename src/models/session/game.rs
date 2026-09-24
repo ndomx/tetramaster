@@ -1,6 +1,7 @@
 use std::collections::VecDeque;
 
 use crate::{
+    ai::{CpuMoveInput, choose_random_action},
     assets::CARDS,
     models::{
         core::{Player, board::Board, card::Card, geometry::Position},
@@ -14,10 +15,7 @@ use crate::{
             PlacementInteractionKind, discover_interactions, is_legal_position, legal_positions,
         },
     },
-    utils::{
-        constants::MAX_HAND_CARDS,
-        random::{GameRng, VecRandomExt},
-    },
+    utils::{constants::MAX_HAND_CARDS, random::GameRng},
 };
 
 use super::Effect;
@@ -160,33 +158,58 @@ impl Game {
     }
 
     fn player_turn(&mut self, action: GameAction) -> TurnResult {
+        self.apply_action(ActivePlayer::Player, action)
+    }
+
+    fn apply_action(&mut self, actor: ActivePlayer, action: GameAction) -> TurnResult {
         if !is_legal_position(&self.board, action.target) {
             return Err("position is not available".to_string());
         }
 
-        let card = self
-            .player
-            .pop_card(action.card_id)
-            .ok_or("card id not found")?;
+        let (owner_id, card) = match actor {
+            ActivePlayer::Player => {
+                let card = self
+                    .player
+                    .pop_card(action.card_id)
+                    .ok_or("card id not found")?;
+                (self.player.id, card)
+            }
+            ActivePlayer::Cpu => {
+                let card_index = self
+                    .cpu
+                    .hand
+                    .iter()
+                    .position(|card| card.id == action.card_id)
+                    .ok_or("card id not found")?;
+                (self.cpu.id, self.cpu.hand.swap_remove(card_index))
+            }
+            ActivePlayer::None => return Err("Invalid active player".to_string()),
+        };
 
-        self.place_card(card, self.player.id, action.target)
+        self.place_card(card, owner_id, action.target)
     }
 
     fn cpu_turn(&mut self) -> TurnResult {
-        let positions = legal_positions(&self.board);
-        let target = self
-            .rng
-            .choose(&positions)
-            .copied()
-            .ok_or("unable to find a position")?;
+        let legal_actions = legal_positions(&self.board)
+            .into_iter()
+            .flat_map(|target| {
+                self.cpu
+                    .hand
+                    .iter()
+                    .map(move |card| GameAction::new(card.id, target))
+            })
+            .collect::<Vec<_>>();
+        let action = choose_random_action(
+            CpuMoveInput {
+                board: &self.board,
+                hand: &self.cpu.hand,
+                legal_actions: &legal_actions,
+            },
+            &mut self.rng,
+        )
+        .ok_or("unable to choose a cpu action")?;
 
-        let card = self
-            .cpu
-            .hand
-            .take_random(&mut self.rng)
-            .ok_or("unable to draw a card from cpu")?;
-
-        self.place_card(card, self.cpu.id, target)
+        self.apply_action(ActivePlayer::Cpu, action)
     }
 
     fn place_card(&mut self, card: Card, owner_id: u64, target: Position) -> TurnResult {
