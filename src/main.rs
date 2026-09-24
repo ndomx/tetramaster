@@ -15,6 +15,11 @@ fn main() -> io::Result<()> {
     println!("Game seed: {seed}");
     let mut game = Game::new(0.25, GameRng::from_seed(seed));
     let mut terminal = Terminal::new(stdout());
+
+    run_game(&mut game, &mut terminal)
+}
+
+fn run_game(game: &mut Game, terminal: &mut Terminal) -> io::Result<()> {
     let mut snapshot = game.snapshot();
     let mut interaction = game.interaction_state();
 
@@ -41,12 +46,12 @@ fn main() -> io::Result<()> {
                 for event in &update.events {
                     terminal.render_event(event)?;
                 }
-                sleep(Duration::from_millis(500));
             }
             Err(error) => {
                 terminal.render_error(&error)?;
-                sleep(Duration::from_millis(500));
             }
         }
+
+        sleep(Duration::from_millis(500));
     }
 }
