@@ -158,35 +158,10 @@ impl Game {
     }
 
     fn player_turn(&mut self, action: GameAction) -> TurnResult {
-        self.apply_action(ActivePlayer::Player, action)
-    }
+        let card_index = self.validate_action(action, &self.player.hand)?;
+        let card = self.player.hand.remove(card_index);
 
-    fn apply_action(&mut self, actor: ActivePlayer, action: GameAction) -> TurnResult {
-        if !is_legal_position(&self.board, action.target) {
-            return Err("position is not available".to_string());
-        }
-
-        let (owner_id, card) = match actor {
-            ActivePlayer::Player => {
-                let card = self
-                    .player
-                    .pop_card(action.card_id)
-                    .ok_or("card id not found")?;
-                (self.player.id, card)
-            }
-            ActivePlayer::Cpu => {
-                let card_index = self
-                    .cpu
-                    .hand
-                    .iter()
-                    .position(|card| card.id == action.card_id)
-                    .ok_or("card id not found")?;
-                (self.cpu.id, self.cpu.hand.swap_remove(card_index))
-            }
-            ActivePlayer::None => return Err("Invalid active player".to_string()),
-        };
-
-        self.place_card(card, owner_id, action.target)
+        self.place_card(card, self.player.id, action.target)
     }
 
     fn cpu_turn(&mut self) -> TurnResult {
@@ -208,8 +183,20 @@ impl Game {
             &mut self.rng,
         )
         .ok_or("unable to choose a cpu action")?;
+        let card_index = self.validate_action(action, &self.cpu.hand)?;
+        let card = self.cpu.hand.swap_remove(card_index);
 
-        self.apply_action(ActivePlayer::Cpu, action)
+        self.place_card(card, self.cpu.id, action.target)
+    }
+
+    fn validate_action(&self, action: GameAction, hand: &[Card]) -> Result<usize, String> {
+        if !is_legal_position(&self.board, action.target) {
+            return Err("position is not available".to_string());
+        }
+
+        hand.iter()
+            .position(|card| card.id == action.card_id)
+            .ok_or("card id not found".to_string())
     }
 
     fn place_card(&mut self, card: Card, owner_id: u64, target: Position) -> TurnResult {
