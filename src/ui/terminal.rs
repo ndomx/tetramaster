@@ -11,11 +11,14 @@ use crossterm::{
 
 use crate::{
     models::{
-        core::{card::Card, geometry::Position},
-        session::{Game, GameAction},
+        core::geometry::Position,
+        session::{
+            CardSnapshot, CombatResult, GameAction, GameError, GameEvent, GameResult, GameSnapshot,
+            OwnershipChangeReason, PlayerSide,
+        },
     },
     ui::ascii::{
-        ascii_view::AsciiView, board_view::BoardView, hand_card_view::HandCardView,
+        ascii_view::AsciiView, board_view::BoardView, card_tile_view::CardTileView,
         score_view::ScoreView,
     },
     utils::constants::BOARD_SIZE,
@@ -30,41 +33,70 @@ impl Terminal {
         Self { stdout }
     }
 
-    pub fn render(&mut self, game: &Game) -> io::Result<()> {
+    pub fn render(&mut self, snapshot: &GameSnapshot) -> io::Result<()> {
         self.clear()?;
 
-        let board_view = BoardView::new(game);
-        let score_view = ScoreView::new(game);
+        let board_view = BoardView::new(snapshot);
+        let score_view = ScoreView::new(snapshot);
 
         board_view.render()?;
         score_view.render()?;
-        self.render_hand(&game.player.hand)?;
+        self.render_hand(&snapshot.human_hand)?;
 
         Ok(())
     }
 
-    pub fn read_action(&mut self, game: &Game) -> io::Result<GameAction> {
-        let hand = game.player_hand();
+    pub fn read_action(&mut self, snapshot: &GameSnapshot) -> io::Result<GameAction> {
+        loop {
+            self.prompt("select a card to play: ")?;
+            let idx: usize = self.parse_input(|&v| v < snapshot.human_hand.len())?;
+            let card = &snapshot.human_hand[idx];
 
-        self.prompt("select a card to play: ")?;
-        let idx: usize = self.parse_input(|&v| v < hand.len())?;
-        let card = &hand[idx];
+            self.prompt("select a row to play card: ")?;
+            let row: usize = self.parse_input(|&v| v < BOARD_SIZE)?;
 
-        self.prompt("select a row to play card: ")?;
-        let row: usize = self.parse_input(|&v| v < BOARD_SIZE)?;
+            self.prompt("select a col to play card: ")?;
+            let col: usize = self.parse_input(|&v| v < BOARD_SIZE)?;
 
-        self.prompt("select a col to play card: ")?;
-        let col: usize = self.parse_input(|&v| v < BOARD_SIZE)?;
+            let action = GameAction::new(card.id, Position::new(row, col));
+            if snapshot.legal_actions.contains(&action) {
+                return Ok(action);
+            }
 
-        Ok(GameAction::new(card.id, Position::new(row, col)))
+            println!("that card cannot be played at that position");
+        }
+    }
+
+    pub fn render_event(&mut self, event: &GameEvent) -> io::Result<()> {
+        println!("{}", event_message(event));
+        self.stdout.flush()
+    }
+
+    pub fn render_error(&mut self, error: &GameError) -> io::Result<()> {
+        println!("Unable to continue: {error}. Please try again.");
+        self.stdout.flush()
+    }
+
+    pub fn render_result(&mut self, result: Option<GameResult>) -> io::Result<()> {
+        let message = match result {
+            Some(GameResult::Winner(PlayerSide::Human)) => "Winner: Player!!",
+            Some(GameResult::Winner(PlayerSide::Cpu)) => "Winner: CPU!!",
+            Some(GameResult::Draw) => "The game is a draw!",
+            None => "The game ended without a result.",
+        };
+        println!("{message}");
+        self.stdout.flush()
     }
 
     fn clear(&mut self) -> io::Result<()> {
         execute!(&mut self.stdout, Clear(ClearType::All), MoveTo(0, 0))
     }
 
-    fn render_hand(&self, hand: &[Card]) -> io::Result<()> {
-        let views: Vec<HandCardView<'_>> = hand.iter().map(HandCardView::new).collect();
+    fn render_hand(&self, hand: &[CardSnapshot]) -> io::Result<()> {
+        let views: Vec<CardTileView<'_>> = hand
+            .iter()
+            .map(|card| CardTileView::new(card, crossterm::style::Color::Blue))
+            .collect();
         let height = views.first().map(|v| v.height()).unwrap_or(0);
 
         for line in 0..height {
@@ -85,9 +117,13 @@ impl Terminal {
     fn read_input(&self) -> io::Result<String> {
         let mut input = String::new();
 
-        io::stdin()
-            .read_line(&mut input)
-            .map_err(|_| io::Error::other("Failed to read input"))?;
+        let bytes_read = io::stdin().read_line(&mut input)?;
+        if bytes_read == 0 {
+            return Err(io::Error::new(
+                io::ErrorKind::UnexpectedEof,
+                "terminal input closed",
+            ));
+        }
 
         Ok(input.trim().to_string())
     }
@@ -102,5 +138,86 @@ impl Terminal {
 
             break Ok(parsed);
         }
+    }
+}
+
+fn side_name(side: PlayerSide) -> &'static str {
+    match side {
+        PlayerSide::Human => "Player",
+        PlayerSide::Cpu => "CPU",
+    }
+}
+
+fn event_message(event: &GameEvent) -> String {
+    match event {
+        GameEvent::GameStarted { first_player } => {
+            format!("Game started. {} goes first.", side_name(*first_player))
+        }
+        GameEvent::TurnStarted { player } => format!("{} turn.", side_name(*player)),
+        GameEvent::CardPlaced {
+            player,
+            card_id,
+            position,
+        } => format!(
+            "{} placed card {card_id} at row {}, column {}.",
+            side_name(*player),
+            position.row,
+            position.col
+        ),
+        GameEvent::CombatResolved {
+            attacker_id,
+            defender_id,
+            outcome,
+        } => {
+            let winner = match outcome {
+                CombatResult::AttackerWon => "attacker",
+                CombatResult::DefenderWon => "defender",
+            };
+            format!("Combat between cards {attacker_id} and {defender_id}: {winner} won.")
+        }
+        GameEvent::OwnershipChanged {
+            card_id,
+            previous_owner,
+            new_owner,
+            reason,
+        } => {
+            let reason = match reason {
+                OwnershipChangeReason::DirectCapture => "direct capture",
+                OwnershipChangeReason::CombatVictory => "combat victory",
+                OwnershipChangeReason::CombatDefeat => "combat defeat",
+                OwnershipChangeReason::Combo => "combo",
+            };
+            format!(
+                "Card {card_id} changed from {} to {} by {reason}.",
+                side_name(*previous_owner),
+                side_name(*new_owner)
+            )
+        }
+        GameEvent::TurnEnded { player } => format!("{} turn ended.", side_name(*player)),
+        GameEvent::GameFinished { result } => match result {
+            GameResult::Winner(side) => format!("Game finished. {} won.", side_name(*side)),
+            GameResult::Draw => "Game finished in a draw.".to_string(),
+        },
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn event_messages_cover_player_visible_contract_events() {
+        assert_eq!(
+            event_message(&GameEvent::TurnStarted {
+                player: PlayerSide::Cpu,
+            }),
+            "CPU turn."
+        );
+        assert_eq!(
+            event_message(&GameEvent::GameFinished {
+                result: GameResult::Draw,
+            }),
+            "Game finished in a draw."
+        );
     }
 }

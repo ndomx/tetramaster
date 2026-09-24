@@ -70,7 +70,7 @@ Dioxus, platform features, and separate binaries.
 - [x] [M1.07 - Centralize randomness](m1-07-randomness.md)
 - [x] [M1.08 - Isolate CPU move selection](m1-08-ai.md)
 - [x] [M1.09 - Implement the frontend contract](m1-09-session-contract.md)
-- [ ] [M1.10 - Adapt the TUI to the shared contract](m1-10-tui-adapter.md)
+- [x] [M1.10 - Adapt the TUI to the shared contract](m1-10-tui-adapter.md)
 - [ ] [M1.11 - Separate board control from player identity](m1-11-board-control.md)
 - [ ] [M1.12 - Verify and document Milestone 1](m1-12-verification.md)
 
