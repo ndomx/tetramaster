@@ -1,5 +1,6 @@
 use crate::models::core::geometry::Position;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct GameAction {
     pub card_id: u64,
     pub target: Position,

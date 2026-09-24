@@ -68,7 +68,7 @@ Dioxus, platform features, and separate binaries.
 - [x] [M1.05 - Extract placement rules](m1-05-placement-rules.md)
 - [x] [M1.06 - Extract combat, capture, and combo rules](m1-06-combat-capture.md)
 - [x] [M1.07 - Centralize randomness](m1-07-randomness.md)
-- [ ] [M1.08 - Isolate CPU move selection](m1-08-ai.md)
+- [x] [M1.08 - Isolate CPU move selection](m1-08-ai.md)
 - [ ] [M1.09 - Implement the frontend contract](m1-09-session-contract.md)
 - [ ] [M1.10 - Adapt the TUI to the shared contract](m1-10-tui-adapter.md)
 - [ ] [M1.11 - Separate board control from player identity](m1-11-board-control.md)

@@ -31,30 +31,11 @@ impl GameRng {
         self.rng.random_range(0..=upper)
     }
 
-    pub fn usize_below(&mut self, upper: usize) -> usize {
-        self.rng.random_range(0..upper)
-    }
-
     pub fn choose<'a, T>(&mut self, values: &'a [T]) -> Option<&'a T> {
         values.choose(&mut self.rng)
     }
 
     pub fn sample<'a, T>(&mut self, values: &'a [T], amount: usize) -> Vec<&'a T> {
         values.sample(&mut self.rng, amount).collect()
-    }
-}
-
-pub trait VecRandomExt<T> {
-    fn take_random(&mut self, rng: &mut GameRng) -> Option<T>;
-}
-
-impl<T> VecRandomExt<T> for Vec<T> {
-    fn take_random(&mut self, rng: &mut GameRng) -> Option<T> {
-        if self.is_empty() {
-            return None;
-        }
-
-        let idx = rng.usize_below(self.len());
-        Some(self.swap_remove(idx))
     }
 }
