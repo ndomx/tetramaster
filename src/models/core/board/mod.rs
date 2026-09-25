@@ -32,6 +32,12 @@ pub enum PlacementError {
     Occupied(Position),
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BoardControlError {
+    OutOfBounds(Position),
+    NotOccupied(Position),
+}
+
 impl Display for PlacementError {
     fn fmt(&self, formatter: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -45,6 +51,21 @@ impl Display for PlacementError {
 }
 
 impl std::error::Error for PlacementError {}
+
+impl Display for BoardControlError {
+    fn fmt(&self, formatter: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::OutOfBounds(position) => {
+                write!(formatter, "position {position:?} is out of bounds")
+            }
+            Self::NotOccupied(position) => {
+                write!(formatter, "position {position:?} is not occupied")
+            }
+        }
+    }
+}
+
+impl std::error::Error for BoardControlError {}
 
 impl Board {
     pub fn build(density: f64, rng: &mut GameRng) -> Self {
@@ -115,9 +136,9 @@ impl Board {
         &mut self,
         position: Position,
         controller: BoardSide,
-    ) -> Result<(), String> {
+    ) -> Result<(), BoardControlError> {
         let Some(index) = pos2idx(position) else {
-            return Err(format!("invalid position {:?}", position));
+            return Err(BoardControlError::OutOfBounds(position));
         };
 
         let board_card = self
@@ -127,7 +148,7 @@ impl Board {
                 Tile::Occupied(board_card) => Some(board_card),
                 _ => None,
             })
-            .ok_or("Tile is not a card".to_string())?;
+            .ok_or(BoardControlError::NotOccupied(position))?;
 
         board_card.controller = controller;
         Ok(())
@@ -225,10 +246,13 @@ mod tests {
             .unwrap();
         assert_eq!(board.score(BoardSide::Blue), 0);
         assert_eq!(board.score(BoardSide::Red), 1);
-        assert!(
-            board
-                .set_controller(Position::new(0, 0), BoardSide::Red)
-                .is_err()
+        assert_eq!(
+            board.set_controller(Position::new(0, 0), BoardSide::Red),
+            Err(BoardControlError::NotOccupied(Position::new(0, 0)))
+        );
+        assert_eq!(
+            board.set_controller(Position::new(BOARD_SIZE, 0), BoardSide::Red),
+            Err(BoardControlError::OutOfBounds(Position::new(BOARD_SIZE, 0)))
         );
         assert!(
             board

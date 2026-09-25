@@ -11,9 +11,9 @@ use crate::{
             geometry::Position,
         },
         session::{
-            ActivePlayer, BoardTileSnapshot, CombatResult, ControlChangeReason, GameAction,
-            GameError, GameEvent, GamePhase, GameResult, GameSnapshot, GameUpdate,
-            InteractionState, PendingEffect, PlayerSide, SessionPhase,
+            BoardTileSnapshot, CombatResult, ControlChangeReason, GameAction, GameError, GameEvent,
+            GamePhase, GameResult, GameSnapshot, GameUpdate, InteractionState, PendingEffect,
+            PlayerSide, SessionPhase,
         },
     },
     rules::{
@@ -53,7 +53,7 @@ pub struct GameSession {
     human_player: Player,
     cpu_player: Player,
     state: GamePhase,
-    active_player: ActivePlayer,
+    active_player: Option<PlayerSide>,
     rng: GameRng,
     turn_announced: bool,
     turn_ended_announced: bool,
@@ -65,8 +65,8 @@ impl GameSession {
         let board = Board::build(block_density, &mut rng);
 
         let mut used_card_ids = HashSet::new();
-        let human_player = Self::build_player(false, &mut rng, &mut used_card_ids);
-        let cpu_player = Self::build_player(true, &mut rng, &mut used_card_ids);
+        let human_player = Self::build_player(BoardSide::Blue, &mut rng, &mut used_card_ids);
+        let cpu_player = Self::build_player(BoardSide::Red, &mut rng, &mut used_card_ids);
 
         Self {
             board,
@@ -74,7 +74,7 @@ impl GameSession {
             cpu_player,
             rng,
             state: GamePhase::NotStarted,
-            active_player: ActivePlayer::None,
+            active_player: None,
             turn_announced: false,
             turn_ended_announced: false,
             resolved_capture: None,
@@ -165,7 +165,7 @@ impl GameSession {
         if self.state == GamePhase::Finished {
             InteractionState::Finished
         } else if self.state == GamePhase::StartTurn
-            && self.active_player == ActivePlayer::Player
+            && self.active_player == Some(PlayerSide::Human)
             && self.turn_announced
         {
             InteractionState::AwaitingPlayerAction
@@ -224,9 +224,9 @@ impl GameSession {
                     })
                 } else {
                     self.active_player = match self.active_player {
-                        ActivePlayer::Cpu => ActivePlayer::Player,
-                        ActivePlayer::Player => ActivePlayer::Cpu,
-                        ActivePlayer::None => {
+                        Some(PlayerSide::Cpu) => Some(PlayerSide::Human),
+                        Some(PlayerSide::Human) => Some(PlayerSide::Cpu),
+                        None => {
                             return Err(GameError::Internal("invalid active player".into()));
                         }
                     };
@@ -243,7 +243,7 @@ impl GameSession {
     }
 
     fn advance_cpu_placement(&mut self) -> Result<GameEvent, GameError> {
-        if self.active_player != ActivePlayer::Cpu {
+        if self.active_player != Some(PlayerSide::Cpu) {
             return Err(GameError::Internal(
                 "only the CPU may advance a started turn".into(),
             ));
@@ -280,11 +280,7 @@ impl GameSession {
     }
 
     fn active_side(&self) -> Option<PlayerSide> {
-        match self.active_player {
-            ActivePlayer::Player => Some(PlayerSide::Human),
-            ActivePlayer::Cpu => Some(PlayerSide::Cpu),
-            ActivePlayer::None => None,
-        }
+        self.active_player
     }
 
     fn result(&self) -> GameResult {
@@ -423,15 +419,14 @@ impl GameSession {
         self.board.score(self.cpu_player.board_side)
     }
 
-    fn build_player(is_cpu: bool, rng: &mut GameRng, used_card_ids: &mut HashSet<u64>) -> Player {
+    fn build_player(
+        board_side: BoardSide,
+        rng: &mut GameRng,
+        used_card_ids: &mut HashSet<u64>,
+    ) -> Player {
         // Preserve the established seeded sequence after removing numeric player IDs.
         let _ = rng.next_u64();
         let hand = Self::build_hand(rng, used_card_ids);
-        let board_side = match is_cpu {
-            true => BoardSide::Red,
-            false => BoardSide::Blue,
-        };
-
         Player { board_side, hand }
     }
 
@@ -491,8 +486,8 @@ impl GameSession {
 
     fn start_game(&mut self) -> Result<(), GameError> {
         self.active_player = match self.rng.random_bool(0.5) {
-            true => ActivePlayer::Player,
-            false => ActivePlayer::Cpu,
+            true => Some(PlayerSide::Human),
+            false => Some(PlayerSide::Cpu),
         };
 
         self.state = GamePhase::StartTurn;
@@ -503,9 +498,9 @@ impl GameSession {
 
     fn active_board_side(&self) -> Result<BoardSide, String> {
         match self.active_player {
-            ActivePlayer::Cpu => Ok(self.cpu_player.board_side),
-            ActivePlayer::Player => Ok(self.human_player.board_side),
-            _ => Err("Invalid active player".to_string()),
+            Some(PlayerSide::Cpu) => Ok(self.cpu_player.board_side),
+            Some(PlayerSide::Human) => Ok(self.human_player.board_side),
+            None => Err("Invalid active player".to_string()),
         }
     }
 }
@@ -556,9 +551,9 @@ mod tests {
         let player_hand = game.human_player.hand.iter().map(card_signature).collect();
         let cpu_hand = game.cpu_player.hand.iter().map(card_signature).collect();
         let active_player = match game.active_player {
-            ActivePlayer::None => "none",
-            ActivePlayer::Player => "player",
-            ActivePlayer::Cpu => "cpu",
+            None => "none",
+            Some(PlayerSide::Human) => "player",
+            Some(PlayerSide::Cpu) => "cpu",
         };
         let session = format!("{:?}:{active_player}", game.state);
 
@@ -614,7 +609,7 @@ mod tests {
         assert!(matches!(update.events[0], GameEvent::GameStarted { .. }));
         assert!(matches!(
             game.active_player,
-            ActivePlayer::Player | ActivePlayer::Cpu
+            Some(PlayerSide::Human | PlayerSide::Cpu)
         ));
         assert_eq!(game.interaction_state(), InteractionState::Advancing);
     }
@@ -622,7 +617,7 @@ mod tests {
     #[test]
     fn player_turn_rejects_unavailable_position_without_removing_card() {
         let mut game = configured_game(2);
-        game.active_player = ActivePlayer::Player;
+        game.active_player = Some(PlayerSide::Human);
         game.state = GamePhase::StartTurn;
         game.turn_announced = true;
         let mut tiles = empty_tiles();
@@ -641,7 +636,7 @@ mod tests {
     #[test]
     fn player_placement_enters_effect_processing_then_end_turn() {
         let mut game = configured_game(3);
-        game.active_player = ActivePlayer::Player;
+        game.active_player = Some(PlayerSide::Human);
         game.state = GamePhase::StartTurn;
         game.turn_announced = true;
         let card_id = game.human_player.hand[0].id;
@@ -658,13 +653,13 @@ mod tests {
         let next_turn = game.advance().unwrap();
         assert!(matches!(next_turn.events[0], GameEvent::TurnStarted { .. }));
         assert_eq!(game.state, GamePhase::StartTurn);
-        assert!(game.active_player == ActivePlayer::Cpu);
+        assert_eq!(game.active_player, Some(PlayerSide::Cpu));
     }
 
     #[test]
     fn cpu_turn_chooses_an_available_position_and_consumes_one_card() {
         let mut game = configured_game(4);
-        game.active_player = ActivePlayer::Cpu;
+        game.active_player = Some(PlayerSide::Cpu);
         game.state = GamePhase::StartTurn;
         let turn_started = game.advance().unwrap();
         assert!(matches!(
@@ -699,7 +694,7 @@ mod tests {
             card: card(20, 0, BattleClass::Physical, 0, 0, 0),
         });
         game.board = Board::from_tiles(tiles);
-        game.active_player = ActivePlayer::Player;
+        game.active_player = Some(PlayerSide::Human);
         game.state = GamePhase::ApplyEffects {
             pending: VecDeque::from([PendingEffect::new(10, 20, Effect::DirectCapture)]),
         };
@@ -874,7 +869,7 @@ mod tests {
     #[test]
     fn invalid_missing_card_does_not_change_board() {
         let mut game = configured_game(9);
-        game.active_player = ActivePlayer::Player;
+        game.active_player = Some(PlayerSide::Human);
         game.state = GamePhase::StartTurn;
         game.turn_announced = true;
         assert_eq!(
@@ -918,7 +913,7 @@ mod tests {
     #[test]
     fn invalid_dispatch_is_atomic_and_returns_a_typed_error() {
         let mut game = configured_game(10);
-        game.active_player = ActivePlayer::Player;
+        game.active_player = Some(PlayerSide::Human);
         game.state = GamePhase::StartTurn;
         game.turn_announced = true;
         let before = game.snapshot();
@@ -947,7 +942,7 @@ mod tests {
             card: card(20, 0, BattleClass::Physical, 100, 100, 100),
         });
         game.board = Board::from_tiles(tiles);
-        game.active_player = ActivePlayer::Player;
+        game.active_player = Some(PlayerSide::Human);
         game.state = GamePhase::ApplyEffects {
             pending: VecDeque::from([PendingEffect::new(10, 20, Effect::Attack)]),
         };

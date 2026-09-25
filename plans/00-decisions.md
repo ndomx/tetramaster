@@ -150,6 +150,12 @@ must be agreed with the human during M1.09 before implementation.
 - CPU move selection receives legal actions and seeded randomness only; unused
   board and hand inputs are not part of its interface.
 - Catalog records and ASCII rendering modules remain internal to their adapters.
+- Active-player state uses `Option<PlayerSide>` rather than a duplicate internal
+  enum, and player construction receives its `BoardSide` explicitly.
+- Board controller mutation returns `BoardControlError`; string errors are
+  reserved for the public session boundary's internal-failure reporting.
+- `CaptureOutcome` reports only the previous controller. `CaptureKind` remains in
+  the capture request as explicit rule context.
 
 ## Deferred Game Rules
 
