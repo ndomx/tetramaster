@@ -14,21 +14,21 @@ use crate::{models::core::geometry::Direction, utils::random::GameRng};
 pub struct Card {
     pub id: u64,
     pub arrows: u8,
-    pub asset: &'static CardDefinition,
+    pub definition: &'static CardDefinition,
     pub stats: CardStats,
 }
 
 impl Card {
-    pub fn new(asset: &'static CardDefinition, rng: &mut GameRng) -> Self {
+    pub fn new(definition: &'static CardDefinition, rng: &mut GameRng) -> Self {
         let arrows = rng.next_u8();
         let id = rng.next_u64();
 
-        let stats = CardStats::generate(&asset.base_stats, rng);
+        let stats = CardStats::generate(&definition.base_stats, rng);
 
         Self {
             id,
             arrows,
-            asset,
+            definition,
             stats,
         }
     }
@@ -47,8 +47,8 @@ impl Card {
     }
 
     pub fn is_facing(&self, direction: Direction) -> bool {
-        let idx = direction as u8;
-        let mask: u8 = 1 << idx;
+        let index = direction as u8;
+        let mask: u8 = 1 << index;
 
         self.arrows & mask > 0
     }
@@ -67,7 +67,7 @@ impl Display for Card {
         write!(
             f,
             "{} | {} | {:#X}",
-            self.asset.name,
+            self.definition.name,
             self.format_stats(),
             self.arrows
         )

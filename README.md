@@ -2,7 +2,8 @@
 
 [![CI](https://github.com/ndomx/tetramaster/actions/workflows/ci.yml/badge.svg)](https://github.com/ndomx/tetramaster/actions/workflows/ci.yml)
 
-A terminal Rust implementation of Final Fantasy IX's Tetra Master.
+A terminal Rust implementation of Final Fantasy IX's Tetra Master, with a
+frontend-neutral game engine shared through the library crate.
 
 The game deals five cards to each side, renders a 4x4 board, and resolves captures through arrows, attack/defense stats, battle classes, and combo-style victory effects.
 
@@ -15,22 +16,30 @@ cargo run
 ## Development
 
 ```sh
-cargo fmt
+cargo fmt --check
 cargo test
 cargo clippy --all-targets -- -D warnings
 ```
 
 ## Layout
 
-- `src/models/`: cards, board, players, positions, turn state, and game session state.
-- `src/commands/`: battle resolution and effect generation.
+- `src/models/core/`: cards, board state, players, and geometry.
+- `src/models/session/`: `GameSession` orchestration and the frontend contract.
+- `src/rules/`: placement, combat, capture, and combo rules.
+- `src/ai/`: CPU move selection from engine-provided legal actions.
 - `src/ui/`: terminal input and ASCII rendering.
-- `src/assets/`: embedded card data.
-- `src/utils/`: constants, helpers, and small utility traits.
+- `src/assets/`: the embedded, read-only card catalog.
+- `src/utils/`: constants, coordinate helpers, and seeded randomness.
 
-## Notes
+## Architecture
 
-The current implementation is intentionally small and playable from the terminal. The next useful cleanup is to move more Tetra Master rules out of `Game` and into focused rule modules that can be tested without terminal input or random global state.
+The terminal adapter drives `GameSession` exclusively through snapshots,
+`GameAction`, `dispatch`, and `advance`. Core models and rules contain no terminal
+I/O or Crossterm dependencies. Each match owns a seeded random generator, and the
+terminal prints its seed when play begins.
+
+The current player controls Blue cards and the CPU controls Red cards. Color is
+independent of the randomly selected starting player.
 
 ## Legal notice
 

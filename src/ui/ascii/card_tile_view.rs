@@ -14,12 +14,15 @@ const FRONT_COLOR: Color = Color::Yellow;
 
 pub struct CardTileView<'a> {
     card: &'a CardSnapshot,
-    back_color: Color,
+    background_color: Color,
 }
 
 impl<'a> CardTileView<'a> {
-    pub fn new(card: &'a CardSnapshot, back_color: Color) -> Self {
-        Self { card, back_color }
+    pub fn new(card: &'a CardSnapshot, background_color: Color) -> Self {
+        Self {
+            card,
+            background_color,
+        }
     }
 
     fn facing(&self) -> impl Iterator<Item = Direction> + '_ {
@@ -33,7 +36,7 @@ impl<'a> CardTileView<'a> {
         let mut north = " ";
         let mut northeast = " ";
 
-        self.facing().for_each(|d| match d {
+        self.facing().for_each(|direction| match direction {
             Direction::NW => northwest = "◤",
             Direction::N => north = "▲",
             Direction::NE => northeast = "◥",
@@ -47,7 +50,7 @@ impl<'a> CardTileView<'a> {
         let mut west = " ";
         let mut east = " ";
 
-        self.facing().for_each(|d| match d {
+        self.facing().for_each(|direction| match direction {
             Direction::W => west = "◀",
             Direction::E => east = "▶",
             _ => {}
@@ -66,7 +69,7 @@ impl<'a> CardTileView<'a> {
         let mut south = " ";
         let mut southeast = " ";
 
-        self.facing().for_each(|d| match d {
+        self.facing().for_each(|direction| match direction {
             Direction::SW => southwest = "◣",
             Direction::S => south = "▼",
             Direction::SE => southeast = "◢",
@@ -116,7 +119,7 @@ impl<'a> AsciiView for CardTileView<'a> {
             MAX_CARD_WRITABLE_IDX => self.bottom_line(),
             _ => format!("└{bottom}┘"),
         }
-        .on(self.back_color)
+        .on(self.background_color)
         .with(FRONT_COLOR)
         .to_string()
     }

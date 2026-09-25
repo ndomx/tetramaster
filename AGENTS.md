@@ -11,15 +11,16 @@ This is a Rust terminal implementation of Final Fantasy IX Tetra Master.
   `card`, and `geometry`, plus the player model. Core models own only their local
   invariants and must not depend on session, rules, AI, or UI code.
 - `src/models/session/` contains application-level match state and coordination
-  types such as `Game`, `GameAction`, `GamePhase`, and pending effects. Session
-  models may depend on core models, never the reverse.
+  types such as `GameSession`, `GameAction`, `GamePhase`, and pending effects.
+  Session models may depend on core models, never the reverse.
 - `src/rules/` contains frontend-neutral placement, combat, capture, and combo
   rule logic.
 - `src/ui/` contains terminal and ASCII rendering.
 - `src/assets/` contains static card records and parsing into card assets.
 - `src/utils/` contains project-wide constants and small helpers.
 
-When adding features, keep UI concerns out of game rules. Prefer moving reusable rule logic into focused modules before growing `Game`.
+When adding features, keep UI concerns out of game rules. Prefer moving reusable
+rule logic into focused modules before growing `GameSession`.
 
 ## Commands
 
@@ -78,10 +79,12 @@ baseline assertion requires explicit human approval of the behavior change.
 
 ## Current Design Direction
 
-`Game` is currently doing several jobs: turn state machine, player ownership, card placement, combat consequence handling, and CPU move choice. Future cleanup should split these responsibilities gradually:
+`GameSession` coordinates the turn state machine and translates rule outcomes
+into the frontend contract. Board invariants, placement/combat/capture/combo
+rules, CPU move selection, and terminal presentation live in their own modules:
 
 - rules for pure Tetra Master behavior,
-- state/session coordination,
+- session coordination and frontend events,
 - AI or move selection,
 - terminal input/output.
 

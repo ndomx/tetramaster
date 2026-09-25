@@ -49,12 +49,12 @@ force until the human explicitly changes them.
   directly under `core` because it does not naturally belong to those groups.
 - `models::session` contains application-level state and workflow for a running
   match, including actions, active-player state, effects, phases, pending work,
-  and `Game` until later steps evolve it into `GameSession`.
+  and `GameSession`.
 - The dependency direction is `models::session -> models::core`. Core models
   must not depend on session coordination, commands/rules, AI, or UI code.
 - Important types are re-exported from their conceptual group, producing paths
   such as `models::core::board::Board`, `models::core::card::Card`,
-  `models::core::geometry::Position`, and `models::session::Game`.
+  `models::core::geometry::Position`, and `models::session::GameSession`.
 - Assets own catalog record parsing and construct `CardDefinition`; core card
   definitions do not depend on the assets layer.
 - Do not add speculative model submodules. Frontend contract types introduced in
@@ -166,8 +166,8 @@ M1.01 records current behavior without treating it as the final design decision.
 ### M1.07 Randomness Decisions
 
 - A per-session `GameRng` wraps the existing dependency's seeded `StdRng` and is
-  owned by `Game`. There is no process-global random state, borrowed `ThreadRng`,
-  or concrete generator exposed through the frontend-facing API.
+  owned by `GameSession`. There is no process-global random state, borrowed
+  `ThreadRng`, or concrete generator exposed through the frontend-facing API.
 - The TUI creates and displays a fresh seed, constructs `GameRng`, and moves it
   into the session. A recorded seed and identical action sequence reproduce the
   complete game.

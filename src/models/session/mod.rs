@@ -13,6 +13,6 @@ pub use contract::{
     GameResult, GameSnapshot, GameUpdate, InteractionState, PlayerSide, SessionPhase,
 };
 pub use effect::Effect;
-pub use game::{Game, GameSession};
+pub use game::GameSession;
 pub use game_phase::GamePhase;
 pub use pending_effect::PendingEffect;

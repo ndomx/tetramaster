@@ -56,29 +56,30 @@ impl Board {
         }
     }
 
-    pub fn get(&self, pos: Position) -> Option<&Tile> {
-        let idx = pos2idx(pos);
-        idx.and_then(|i| self.tiles.get(i))
+    pub fn get(&self, position: Position) -> Option<&Tile> {
+        let index = pos2idx(position);
+        index.and_then(|index| self.tiles.get(index))
     }
 
-    pub fn get_card(&self, pos: Position) -> Option<&BoardCard> {
-        pos2idx(pos)
-            .and_then(|i| self.tiles.get(i))
-            .and_then(|t| match t {
-                Tile::Occupied(tc) => Some(tc),
+    pub fn get_card(&self, position: Position) -> Option<&BoardCard> {
+        pos2idx(position)
+            .and_then(|index| self.tiles.get(index))
+            .and_then(|tile| match tile {
+                Tile::Occupied(board_card) => Some(board_card),
                 _ => None,
             })
     }
 
-    pub fn get_relative(&self, pos: Position, dir: &Direction) -> Option<&BoardCard> {
-        pos.relative(
-            dir,
-            Position {
-                row: BOARD_SIZE,
-                col: BOARD_SIZE,
-            },
-        )
-        .and_then(|next| self.get_card(next))
+    pub fn get_relative(&self, position: Position, direction: &Direction) -> Option<&BoardCard> {
+        position
+            .relative(
+                direction,
+                Position {
+                    row: BOARD_SIZE,
+                    col: BOARD_SIZE,
+                },
+            )
+            .and_then(|next| self.get_card(next))
     }
 
     pub fn row(&self, row: usize) -> &[Tile] {
@@ -93,38 +94,42 @@ impl Board {
         target: Position,
         controller: BoardSide,
     ) -> Result<(), PlacementError> {
-        let idx = pos2idx(target).ok_or(PlacementError::OutOfBounds(target))?;
+        let index = pos2idx(target).ok_or(PlacementError::OutOfBounds(target))?;
 
-        match &self.tiles[idx] {
+        match &self.tiles[index] {
             Tile::Empty => {}
             Tile::Blocked => return Err(PlacementError::Blocked(target)),
             Tile::Occupied(_) => return Err(PlacementError::Occupied(target)),
         }
 
-        self.tiles[idx] = Tile::Occupied(BoardCard { controller, card });
+        self.tiles[index] = Tile::Occupied(BoardCard { controller, card });
 
         Ok(())
     }
 
-    pub fn is_available(&self, pos: Position) -> bool {
-        self.get(pos) == Some(&Tile::Empty)
+    pub fn is_available(&self, position: Position) -> bool {
+        self.get(position) == Some(&Tile::Empty)
     }
 
-    pub fn set_controller(&mut self, pos: Position, controller: BoardSide) -> Result<(), String> {
-        let Some(idx) = pos2idx(pos) else {
-            return Err(format!("invalid pos {:?}", pos));
+    pub fn set_controller(
+        &mut self,
+        position: Position,
+        controller: BoardSide,
+    ) -> Result<(), String> {
+        let Some(index) = pos2idx(position) else {
+            return Err(format!("invalid position {:?}", position));
         };
 
-        let tc = self
+        let board_card = self
             .tiles
-            .get_mut(idx)
-            .and_then(|t| match t {
-                Tile::Occupied(tc) => Some(tc),
+            .get_mut(index)
+            .and_then(|tile| match tile {
+                Tile::Occupied(board_card) => Some(board_card),
                 _ => None,
             })
             .ok_or("Tile is not a card".to_string())?;
 
-        tc.controller = controller;
+        board_card.controller = controller;
         Ok(())
     }
 
@@ -132,13 +137,13 @@ impl Board {
         self.tiles
             .iter()
             .enumerate()
-            .find_map(|(idx, tile)| match tile {
-                Tile::Occupied(tc) => {
-                    if tc.card.id != card_id {
+            .find_map(|(index, tile)| match tile {
+                Tile::Occupied(board_card) => {
+                    if board_card.card.id != card_id {
                         return None;
                     }
 
-                    idx2pos(idx).map(|pos| (tc, pos))
+                    idx2pos(index).map(|position| (board_card, position))
                 }
                 _ => None,
             })
@@ -147,18 +152,18 @@ impl Board {
     pub fn score(&self, controller: BoardSide) -> usize {
         self.tiles
             .iter()
-            .filter_map(|t| match t {
+            .filter_map(|tile| match tile {
                 Tile::Occupied(board_card) => Some(board_card),
                 _ => None,
             })
-            .filter(|tc| tc.controller == controller)
+            .filter(|board_card| board_card.controller == controller)
             .count()
     }
 
     pub fn count_empty(&self) -> usize {
         self.tiles
             .iter()
-            .filter(|t| matches!(t, Tile::Empty))
+            .filter(|tile| matches!(tile, Tile::Empty))
             .count()
     }
 }
@@ -209,9 +214,9 @@ mod tests {
         assert!(!board.is_available(Position::new(1, 2)));
         assert_eq!(board.count_empty(), TILE_TOTAL - 1);
         assert_eq!(board.score(BoardSide::Blue), 1);
-        let (placed, pos) = board.position_of_card(7).unwrap();
+        let (placed, position) = board.position_of_card(7).unwrap();
         assert_eq!(
-            (pos.row, pos.col, placed.controller),
+            (position.row, position.col, placed.controller),
             (1, 2, BoardSide::Blue)
         );
 

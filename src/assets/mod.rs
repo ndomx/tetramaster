@@ -46,8 +46,8 @@ fn load_cards() -> Result<Vec<CardDefinition>, String> {
     reader
         .deserialize::<CardRecord>()
         .enumerate()
-        .map(|(index, res)| {
-            let record = res.map_err(|e| e.to_string())?;
+        .map(|(index, result)| {
+            let record = result.map_err(|error| error.to_string())?;
             parse_definition(index, record)
         })
         .collect()

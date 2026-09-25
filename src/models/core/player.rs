@@ -11,8 +11,8 @@ impl Player {
     pub fn pop_card(&mut self, card_id: u64) -> Option<Card> {
         self.hand
             .iter()
-            .position(|c| c.id == card_id)
-            .map(|idx| self.hand.remove(idx))
+            .position(|card| card.id == card_id)
+            .map(|index| self.hand.remove(index))
     }
 }
 

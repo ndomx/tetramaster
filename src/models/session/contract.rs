@@ -60,8 +60,8 @@ impl From<&Card> for CardSnapshot {
     fn from(card: &Card) -> Self {
         Self {
             id: card.id,
-            definition_index: card.asset.index,
-            name: card.asset.name.clone(),
+            definition_index: card.definition.index,
+            name: card.definition.name.clone(),
             arrows: card.arrows,
             stats: card.stats.clone(),
         }

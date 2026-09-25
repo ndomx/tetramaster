@@ -52,8 +52,8 @@ struct ResolvedCapture {
 
 pub struct GameSession {
     pub board: Board,
-    pub player: Player,
-    pub cpu: Player,
+    pub human_player: Player,
+    pub cpu_player: Player,
     pub state: GamePhase,
     pub active_player: ActivePlayer,
     rng: GameRng,
@@ -62,20 +62,18 @@ pub struct GameSession {
     resolved_capture: Option<ResolvedCapture>,
 }
 
-pub type Game = GameSession;
-
 impl GameSession {
     pub fn new(block_density: f64, mut rng: GameRng) -> Self {
         let board = Board::build(block_density, &mut rng);
 
         let mut used_card_ids = HashSet::new();
-        let player = Self::build_player(false, &mut rng, &mut used_card_ids);
-        let cpu = Self::build_player(true, &mut rng, &mut used_card_ids);
+        let human_player = Self::build_player(false, &mut rng, &mut used_card_ids);
+        let cpu_player = Self::build_player(true, &mut rng, &mut used_card_ids);
 
         Self {
             board,
-            player,
-            cpu,
+            human_player,
+            cpu_player,
             rng,
             state: GamePhase::NotStarted,
             active_player: ActivePlayer::None,
@@ -103,7 +101,7 @@ impl GameSession {
             legal_positions(&self.board)
                 .into_iter()
                 .flat_map(|position| {
-                    self.player
+                    self.human_player
                         .hand
                         .iter()
                         .map(move |card| GameAction::PlayCard {
@@ -118,8 +116,8 @@ impl GameSession {
 
         GameSnapshot {
             board,
-            human_hand: self.player.hand.iter().map(Into::into).collect(),
-            cpu_hand_count: self.cpu.hand.len(),
+            human_hand: self.human_player.hand.iter().map(Into::into).collect(),
+            cpu_hand_count: self.cpu_player.hand.len(),
             human_score: self.player_score(),
             cpu_score: self.cpu_score(),
             active_player: self.active_side(),
@@ -144,9 +142,9 @@ impl GameSession {
         }
         let card_id = action.card_id();
         let position = action.position();
-        let card_index = self.validate_action(action, &self.player.hand)?;
-        let card = self.player.hand.remove(card_index);
-        self.place_card(card, self.player.board_side, position)?;
+        let card_index = self.validate_action(action, &self.human_player.hand)?;
+        let card = self.human_player.hand.remove(card_index);
+        self.place_card(card, self.human_player.board_side, position)?;
         Ok(self.update(GameEvent::CardPlaced {
             player: PlayerSide::Human,
             card_id,
@@ -220,7 +218,7 @@ impl GameSession {
             }
             GamePhase::EndTurn => {
                 if self.board.count_empty() == 0
-                    || (self.player.hand.is_empty() && self.cpu.hand.is_empty())
+                    || (self.human_player.hand.is_empty() && self.cpu_player.hand.is_empty())
                 {
                     self.state = GamePhase::Finished;
                     Ok(GameEvent::GameFinished {
@@ -255,16 +253,19 @@ impl GameSession {
         let legal_actions = legal_positions(&self.board)
             .into_iter()
             .flat_map(|position| {
-                self.cpu.hand.iter().map(move |card| GameAction::PlayCard {
-                    card_id: card.id,
-                    position,
-                })
+                self.cpu_player
+                    .hand
+                    .iter()
+                    .map(move |card| GameAction::PlayCard {
+                        card_id: card.id,
+                        position,
+                    })
             })
             .collect::<Vec<_>>();
         let action = choose_random_action(
             CpuMoveInput {
                 board: &self.board,
-                hand: &self.cpu.hand,
+                hand: &self.cpu_player.hand,
                 legal_actions: &legal_actions,
             },
             &mut self.rng,
@@ -272,9 +273,9 @@ impl GameSession {
         .ok_or_else(|| GameError::Internal("unable to choose a cpu action".into()))?;
         let card_id = action.card_id();
         let position = action.position();
-        let card_index = self.validate_action(action, &self.cpu.hand)?;
-        let card = self.cpu.hand.swap_remove(card_index);
-        self.place_card(card, self.cpu.board_side, position)?;
+        let card_index = self.validate_action(action, &self.cpu_player.hand)?;
+        let card = self.cpu_player.hand.swap_remove(card_index);
+        self.place_card(card, self.cpu_player.board_side, position)?;
         Ok(GameEvent::CardPlaced {
             player: PlayerSide::Cpu,
             card_id,
@@ -333,7 +334,7 @@ impl GameSession {
                 })
             }
             Effect::Attack => {
-                let (source, source_position) = self
+                let (source, _) = self
                     .board
                     .position_of_card(pending_effect.source_card_id)
                     .ok_or_else(|| GameError::Internal("cannot find combat source".into()))?;
@@ -366,7 +367,6 @@ impl GameSession {
                         ends_turn: true,
                     },
                 });
-                let _ = source_position;
                 Ok(GameEvent::CombatResolved {
                     attacker_id: pending_effect.source_card_id,
                     defender_id: pending_effect.target_card_id,
@@ -420,7 +420,7 @@ impl GameSession {
     }
 
     pub fn player_hand(&self) -> &[Card] {
-        &self.player.hand
+        &self.human_player.hand
     }
 
     pub fn run(&mut self) -> TurnResult {
@@ -443,11 +443,11 @@ impl GameSession {
     }
 
     pub fn player_score(&self) -> usize {
-        self.board.score(self.player.board_side)
+        self.board.score(self.human_player.board_side)
     }
 
     pub fn cpu_score(&self) -> usize {
-        self.board.score(self.cpu.board_side)
+        self.board.score(self.cpu_player.board_side)
     }
 
     fn start_turn(&mut self) -> TurnResult {
@@ -483,7 +483,7 @@ impl GameSession {
             return Ok(());
         }
 
-        if self.player.hand.is_empty() && self.cpu.hand.is_empty() {
+        if self.human_player.hand.is_empty() && self.cpu_player.hand.is_empty() {
             self.state = GamePhase::Finished;
             return Ok(());
         }
@@ -534,17 +534,17 @@ impl GameSession {
     }
 
     fn player_turn(&mut self, action: GameAction) -> TurnResult {
-        let card_index = self.validate_action(action, &self.player.hand)?;
-        let card = self.player.hand.remove(card_index);
+        let card_index = self.validate_action(action, &self.human_player.hand)?;
+        let card = self.human_player.hand.remove(card_index);
 
-        Ok(self.place_card(card, self.player.board_side, action.position())?)
+        Ok(self.place_card(card, self.human_player.board_side, action.position())?)
     }
 
     fn cpu_turn(&mut self) -> TurnResult {
         let legal_actions = legal_positions(&self.board)
             .into_iter()
             .flat_map(|target| {
-                self.cpu
+                self.cpu_player
                     .hand
                     .iter()
                     .map(move |card| GameAction::new(card.id, target))
@@ -553,16 +553,16 @@ impl GameSession {
         let action = choose_random_action(
             CpuMoveInput {
                 board: &self.board,
-                hand: &self.cpu.hand,
+                hand: &self.cpu_player.hand,
                 legal_actions: &legal_actions,
             },
             &mut self.rng,
         )
         .ok_or("unable to choose a cpu action")?;
-        let card_index = self.validate_action(action, &self.cpu.hand)?;
-        let card = self.cpu.hand.swap_remove(card_index);
+        let card_index = self.validate_action(action, &self.cpu_player.hand)?;
+        let card = self.cpu_player.hand.swap_remove(card_index);
 
-        Ok(self.place_card(card, self.cpu.board_side, action.position())?)
+        Ok(self.place_card(card, self.cpu_player.board_side, action.position())?)
     }
 
     fn validate_action(&self, action: GameAction, hand: &[Card]) -> Result<usize, GameError> {
@@ -619,34 +619,34 @@ impl GameSession {
 
     fn active_board_side(&self) -> Result<BoardSide, String> {
         match self.active_player {
-            ActivePlayer::Cpu => Ok(self.cpu.board_side),
-            ActivePlayer::Player => Ok(self.player.board_side),
+            ActivePlayer::Cpu => Ok(self.cpu_player.board_side),
+            ActivePlayer::Player => Ok(self.human_player.board_side),
             _ => Err("Invalid active player".to_string()),
         }
     }
 
     fn attack(&mut self, pending_effect: PendingEffect) -> TurnResult {
-        let (source_tc, source_pos) = self
+        let (source_card, source_position) = self
             .board
             .position_of_card(pending_effect.source_card_id)
             .ok_or("Cannot find source")?;
 
-        let (target_tc, target_pos) = self
+        let (target_card, target_position) = self
             .board
             .position_of_card(pending_effect.target_card_id)
             .ok_or("Cannot find target")?;
 
         let result = resolve_combat(
             CombatParams {
-                attacker: &source_tc.card,
-                defender: &target_tc.card,
+                attacker: &source_card.card,
+                defender: &target_card.card,
             },
             &mut self.rng,
         );
 
         match result {
-            CombatOutcome::Victory => self.on_victory(source_tc.controller, target_pos),
-            CombatOutcome::Defeat => self.on_defeat(target_tc.controller, source_pos),
+            CombatOutcome::Victory => self.on_victory(source_card.controller, target_position),
+            CombatOutcome::Defeat => self.on_defeat(target_card.controller, source_position),
         }
     }
 
@@ -665,10 +665,10 @@ impl GameSession {
         Ok(())
     }
 
-    fn on_victory(&mut self, controller: BoardSide, pos: Position) -> TurnResult {
+    fn on_victory(&mut self, controller: BoardSide, position: Position) -> TurnResult {
         let target_card_id = self
             .board
-            .get_card(pos)
+            .get_card(position)
             .ok_or("Unable to find target")?
             .card
             .id;
@@ -683,7 +683,7 @@ impl GameSession {
         .map_err(|error| error.to_string())?;
 
         let combo_captures =
-            discover_combo_captures(&self.board, pos).map_err(|error| error.to_string())?;
+            discover_combo_captures(&self.board, position).map_err(|error| error.to_string())?;
 
         let GamePhase::ApplyEffects { pending } = &mut self.state else {
             return Err("skip side effects".into());
@@ -694,10 +694,10 @@ impl GameSession {
         Ok(())
     }
 
-    fn on_defeat(&mut self, controller: BoardSide, pos: Position) -> TurnResult {
+    fn on_defeat(&mut self, controller: BoardSide, position: Position) -> TurnResult {
         let source_card_id = self
             .board
-            .get_card(pos)
+            .get_card(position)
             .ok_or("Unable to find source")?
             .card
             .id;
@@ -735,7 +735,7 @@ mod tests {
             "{}:{}:{}:{}:{}:{}:{}",
             card.id,
             card.arrows,
-            card.asset.name,
+            card.definition.name,
             card.stats.attack,
             card.stats.battle_class,
             card.stats.phys_defense,
@@ -743,7 +743,7 @@ mod tests {
         )
     }
 
-    fn game_signature(game: &Game) -> (Vec<String>, Vec<String>, Vec<String>, String) {
+    fn game_signature(game: &GameSession) -> (Vec<String>, Vec<String>, Vec<String>, String) {
         let board = (0..crate::utils::constants::BOARD_SIZE)
             .flat_map(|row| game.board.row(row))
             .map(|tile| match tile {
@@ -758,8 +758,8 @@ mod tests {
                 }
             })
             .collect();
-        let player_hand = game.player.hand.iter().map(card_signature).collect();
-        let cpu_hand = game.cpu.hand.iter().map(card_signature).collect();
+        let player_hand = game.human_player.hand.iter().map(card_signature).collect();
+        let cpu_hand = game.cpu_player.hand.iter().map(card_signature).collect();
         let active_player = match game.active_player {
             ActivePlayer::None => "none",
             ActivePlayer::Player => "player",
@@ -770,14 +770,14 @@ mod tests {
         (board, player_hand, cpu_hand, session)
     }
 
-    fn configured_game(seed: u64) -> Game {
-        let mut game = Game::new(0.0, GameRng::from_seed(seed));
+    fn configured_game(seed: u64) -> GameSession {
+        let mut game = GameSession::new(0.0, GameRng::from_seed(seed));
         game.board = Board::from_tiles(empty_tiles());
-        game.player.hand = (0..MAX_HAND_CARDS)
-            .map(|i| card(10 + i as u64, 0, BattleClass::Physical, 1, 1, 1))
+        game.human_player.hand = (0..MAX_HAND_CARDS)
+            .map(|index| card(10 + index as u64, 0, BattleClass::Physical, 1, 1, 1))
             .collect();
-        game.cpu.hand = (0..MAX_HAND_CARDS)
-            .map(|i| card(20 + i as u64, 0, BattleClass::Physical, 1, 1, 1))
+        game.cpu_player.hand = (0..MAX_HAND_CARDS)
+            .map(|index| card(20 + index as u64, 0, BattleClass::Physical, 1, 1, 1))
             .collect();
         game
     }
@@ -785,8 +785,8 @@ mod tests {
     #[test]
     fn same_seed_and_action_sequence_reproduce_the_entire_game() {
         const SEED: u64 = 0x5EED_CAFE;
-        let mut first = Game::new(0.25, GameRng::from_seed(SEED));
-        let mut second = Game::new(0.25, GameRng::from_seed(SEED));
+        let mut first = GameSession::new(0.25, GameRng::from_seed(SEED));
+        let mut second = GameSession::new(0.25, GameRng::from_seed(SEED));
 
         for step in 0..100 {
             assert_eq!(
@@ -800,7 +800,7 @@ mod tests {
             }
 
             if first.awaiting_input() {
-                let card_id = first.player.hand[0].id;
+                let card_id = first.human_player.hand[0].id;
                 let target = legal_positions(&first.board)[0];
                 let action = GameAction::new(card_id, target);
                 first.play_card(action).unwrap();
@@ -838,13 +838,13 @@ mod tests {
         let mut tiles = empty_tiles();
         tiles[0] = Tile::Blocked;
         game.board = Board::from_tiles(tiles);
-        let card_id = game.player.hand[0].id;
-        let before = game.player.hand.len();
+        let card_id = game.human_player.hand[0].id;
+        let before = game.human_player.hand.len();
         assert!(
             game.play_card(GameAction::new(card_id, Position::new(0, 0)))
                 .is_err()
         );
-        assert_eq!(game.player.hand.len(), before);
+        assert_eq!(game.human_player.hand.len(), before);
         assert_eq!(game.state, GamePhase::StartTurn);
     }
 
@@ -853,10 +853,10 @@ mod tests {
         let mut game = configured_game(3);
         game.active_player = ActivePlayer::Player;
         game.state = GamePhase::StartTurn;
-        let card_id = game.player.hand[0].id;
+        let card_id = game.human_player.hand[0].id;
         game.play_card(GameAction::new(card_id, Position::new(0, 0)))
             .unwrap();
-        assert_eq!(game.player.hand.len(), MAX_HAND_CARDS - 1);
+        assert_eq!(game.human_player.hand.len(), MAX_HAND_CARDS - 1);
         assert!(
             matches!(game.state, GamePhase::ApplyEffects { ref pending } if pending.is_empty())
         );
@@ -874,7 +874,7 @@ mod tests {
         game.active_player = ActivePlayer::Cpu;
         game.state = GamePhase::StartTurn;
         game.run().unwrap();
-        assert_eq!(game.cpu.hand.len(), MAX_HAND_CARDS - 1);
+        assert_eq!(game.cpu_player.hand.len(), MAX_HAND_CARDS - 1);
         assert_eq!(game.cpu_score(), 1);
         assert!(matches!(game.state, GamePhase::ApplyEffects { .. }));
     }
@@ -994,8 +994,8 @@ mod tests {
     fn end_turn_finishes_for_full_board_or_two_empty_hands() {
         let mut game = configured_game(7);
         game.state = GamePhase::EndTurn;
-        game.player.hand.clear();
-        game.cpu.hand.clear();
+        game.human_player.hand.clear();
+        game.cpu_player.hand.clear();
         game.run().unwrap();
         assert_eq!(game.state, GamePhase::Finished);
 
@@ -1006,7 +1006,7 @@ mod tests {
             })
         });
         game.board = Board::from_tiles(tiles);
-        game.player
+        game.human_player
             .hand
             .push(card(1, 0, BattleClass::Physical, 0, 0, 0));
         game.state = GamePhase::EndTurn;
@@ -1022,7 +1022,7 @@ mod tests {
         let mut steps = 0;
         while game.state != GamePhase::Finished {
             if game.awaiting_input() {
-                let card_id = game.player.hand[0].id;
+                let card_id = game.human_player.hand[0].id;
                 let target = (0..16)
                     .filter_map(crate::utils::helpers::idx2pos)
                     .find(|position| game.board.is_available(*position))
@@ -1034,8 +1034,8 @@ mod tests {
             steps += 1;
             assert!(steps < 100);
         }
-        assert!(game.player.hand.is_empty());
-        assert!(game.cpu.hand.is_empty());
+        assert!(game.human_player.hand.is_empty());
+        assert!(game.cpu_player.hand.is_empty());
         assert_eq!(game.player_score() + game.cpu_score(), MAX_HAND_CARDS * 2);
         assert_eq!(game.board.count_empty(), 16 - MAX_HAND_CARDS * 2);
     }
@@ -1048,7 +1048,7 @@ mod tests {
                 .is_err()
         );
         assert!(game.board.is_available(Position::new(0, 0)));
-        assert_eq!(game.player.hand.len(), MAX_HAND_CARDS);
+        assert_eq!(game.human_player.hand.len(), MAX_HAND_CARDS);
     }
 
     #[test]
@@ -1161,10 +1161,10 @@ mod tests {
         for seed in 0..64 {
             let game = GameSession::new(0.0, GameRng::from_seed(seed));
             let ids = game
-                .player
+                .human_player
                 .hand
                 .iter()
-                .chain(&game.cpu.hand)
+                .chain(&game.cpu_player.hand)
                 .map(|card| card.id)
                 .collect::<HashSet<_>>();
             assert_eq!(ids.len(), MAX_HAND_CARDS * 2, "seed {seed}");
