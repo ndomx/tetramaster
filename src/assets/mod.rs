@@ -5,7 +5,7 @@ use crate::{
     models::core::card::{BattleClass, CardDefinition, CardStats},
 };
 
-pub mod card_record;
+mod card_record;
 
 const CSV_FILE: &str = include_str!("./card_records.csv");
 

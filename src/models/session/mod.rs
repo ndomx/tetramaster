@@ -7,12 +7,12 @@ mod game_phase;
 mod pending_effect;
 
 pub use action::GameAction;
-pub use active_player::ActivePlayer;
+pub(crate) use active_player::ActivePlayer;
 pub use contract::{
     BoardTileSnapshot, CardSnapshot, CombatResult, ControlChangeReason, GameError, GameEvent,
     GameResult, GameSnapshot, GameUpdate, InteractionState, PlayerSide, SessionPhase,
 };
-pub use effect::Effect;
+pub(crate) use effect::Effect;
 pub use game::GameSession;
-pub use game_phase::GamePhase;
-pub use pending_effect::PendingEffect;
+pub(crate) use game_phase::GamePhase;
+pub(crate) use pending_effect::PendingEffect;

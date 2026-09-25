@@ -161,9 +161,3 @@ impl From<String> for GameError {
         Self::Internal(message)
     }
 }
-
-impl From<GameError> for String {
-    fn from(error: GameError) -> Self {
-        error.to_string()
-    }
-}

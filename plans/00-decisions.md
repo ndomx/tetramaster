@@ -139,6 +139,18 @@ must be agreed with the human during M1.09 before implementation.
 - `Player` has no numeric ID. The session continues to consume the two legacy ID
   random draws so existing seeded games retain their characterized sequence.
 
+### M1.12 Cleanup Decisions
+
+- `GameSession::{new, snapshot, dispatch, advance, interaction_state}` and the
+  frontend contract types are the supported session interface. The duplicate
+  pre-contract execution path has been removed, and behavioral tests drive the
+  same contract as frontends.
+- Session state, phases, pending effects, and active-player bookkeeping are
+  private implementation details rather than a second mutable public API.
+- CPU move selection receives legal actions and seeded randomness only; unused
+  board and hand inputs are not part of its interface.
+- Catalog records and ASCII rendering modules remain internal to their adapters.
+
 ## Deferred Game Rules
 
 Structural steps preserve and characterize current behavior. Resolve each item
