@@ -2,7 +2,6 @@ use super::card::Card;
 
 #[derive(PartialEq, Eq)]
 pub struct Player {
-    pub id: u64,
     pub name: String,
     pub hand: Vec<Card>,
 }
@@ -24,7 +23,6 @@ mod tests {
     #[test]
     fn pop_card_removes_only_the_first_matching_identity() {
         let mut player = Player {
-            id: 1,
             name: "P".into(),
             hand: vec![
                 card(4, 0, BattleClass::Physical, 0, 0, 0),

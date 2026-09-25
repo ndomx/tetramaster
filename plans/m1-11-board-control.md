@@ -15,13 +15,15 @@ identity merely to distinguish the two sides in a match.
 - The human has approved the name of the typed board-control concept and its two
   variants.
 
-## Open Question
+## Decision
 
-- What should the typed board-control concept and its two variants be called?
-
-Do not choose the names silently during implementation. The names must describe
-the two match-local sides without encoding whether either side is human- or
-CPU-controlled and without using vague ordinal labels.
+- Use `BoardSide::{Blue, Red}` for match-local card control.
+- In the current human-versus-CPU session, the player is always Blue and the CPU
+  is always Red.
+- Color assignment for a possible future PvP mode is deferred until that mode is
+  designed.
+- Starting-player selection remains independent and random; Blue does not always
+  start.
 
 ## Scope
 

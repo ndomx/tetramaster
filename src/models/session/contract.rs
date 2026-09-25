@@ -1,6 +1,7 @@
 use std::fmt::{Display, Formatter};
 
 use crate::models::core::{
+    board::BoardSide,
     card::{Card, CardStats},
     geometry::Position,
 };
@@ -39,7 +40,7 @@ pub enum CombatResult {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum OwnershipChangeReason {
+pub enum ControlChangeReason {
     DirectCapture,
     CombatVictory,
     CombatDefeat,
@@ -72,7 +73,7 @@ pub enum BoardTileSnapshot {
     Empty,
     Blocked,
     Occupied {
-        owner: PlayerSide,
+        controller: BoardSide,
         card: CardSnapshot,
     },
 }
@@ -108,11 +109,11 @@ pub enum GameEvent {
         defender_id: u64,
         outcome: CombatResult,
     },
-    OwnershipChanged {
+    ControlChanged {
         card_id: u64,
-        previous_owner: PlayerSide,
-        new_owner: PlayerSide,
-        reason: OwnershipChangeReason,
+        previous_controller: BoardSide,
+        new_controller: BoardSide,
+        reason: ControlChangeReason,
     },
     TurnEnded {
         player: PlayerSide,

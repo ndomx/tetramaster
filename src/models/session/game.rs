@@ -4,11 +4,16 @@ use crate::{
     ai::{CpuMoveInput, choose_random_action},
     assets::CARDS,
     models::{
-        core::{Player, board::Board, card::Card, geometry::Position},
+        core::{
+            Player,
+            board::{Board, BoardSide},
+            card::Card,
+            geometry::Position,
+        },
         session::{
-            ActivePlayer, BoardTileSnapshot, CombatResult, GameAction, GameError, GameEvent,
-            GamePhase, GameResult, GameSnapshot, GameUpdate, InteractionState,
-            OwnershipChangeReason, PendingEffect, PlayerSide, SessionPhase,
+            ActivePlayer, BoardTileSnapshot, CombatResult, ControlChangeReason, GameAction,
+            GameError, GameEvent, GamePhase, GameResult, GameSnapshot, GameUpdate,
+            InteractionState, PendingEffect, PlayerSide, SessionPhase,
         },
     },
     rules::{
@@ -39,8 +44,8 @@ fn enqueue_combo_captures(pending: &mut VecDeque<PendingEffect>, combo_captures:
 
 struct ResolvedCapture {
     card_id: u64,
-    new_owner_id: u64,
-    reason: OwnershipChangeReason,
+    new_controller: BoardSide,
+    reason: ControlChangeReason,
     combo_origin: Option<Position>,
     ends_turn: bool,
 }
@@ -88,7 +93,7 @@ impl GameSession {
                 crate::models::core::board::Tile::Blocked => BoardTileSnapshot::Blocked,
                 crate::models::core::board::Tile::Occupied(board_card) => {
                     BoardTileSnapshot::Occupied {
-                        owner: self.side_for_owner(board_card.owner_id),
+                        controller: board_card.controller,
                         card: (&board_card.card).into(),
                     }
                 }
@@ -141,7 +146,7 @@ impl GameSession {
         let position = action.position();
         let card_index = self.validate_action(action, &self.player.hand)?;
         let card = self.player.hand.remove(card_index);
-        self.place_card(card, self.player.id, position)?;
+        self.place_card(card, BoardSide::Blue, position)?;
         Ok(self.update(GameEvent::CardPlaced {
             player: PlayerSide::Human,
             card_id,
@@ -269,7 +274,7 @@ impl GameSession {
         let position = action.position();
         let card_index = self.validate_action(action, &self.cpu.hand)?;
         let card = self.cpu.hand.swap_remove(card_index);
-        self.place_card(card, self.cpu.id, position)?;
+        self.place_card(card, BoardSide::Red, position)?;
         Ok(GameEvent::CardPlaced {
             player: PlayerSide::Cpu,
             card_id,
@@ -282,14 +287,6 @@ impl GameSession {
             ActivePlayer::Player => Some(PlayerSide::Human),
             ActivePlayer::Cpu => Some(PlayerSide::Cpu),
             ActivePlayer::None => None,
-        }
-    }
-
-    fn side_for_owner(&self, owner_id: u64) -> PlayerSide {
-        if owner_id == self.player.id {
-            PlayerSide::Human
-        } else {
-            PlayerSide::Cpu
         }
     }
 
@@ -322,14 +319,14 @@ impl GameSession {
 
         match pending_effect.effect {
             Effect::DirectCapture | Effect::ComboCapture => {
-                let new_owner_id = self.get_active_player()?.id;
+                let new_controller = self.active_board_side()?;
                 self.apply_resolved_capture(ResolvedCapture {
                     card_id: pending_effect.target_card_id,
-                    new_owner_id,
+                    new_controller,
                     reason: if pending_effect.effect == Effect::ComboCapture {
-                        OwnershipChangeReason::Combo
+                        ControlChangeReason::Combo
                     } else {
-                        OwnershipChangeReason::DirectCapture
+                        ControlChangeReason::DirectCapture
                     },
                     combo_origin: None,
                     ends_turn: false,
@@ -344,8 +341,8 @@ impl GameSession {
                     .board
                     .position_of_card(pending_effect.target_card_id)
                     .ok_or_else(|| GameError::Internal("cannot find combat target".into()))?;
-                let source_owner = source.owner_id;
-                let target_owner = target.owner_id;
+                let source_controller = source.controller;
+                let target_controller = target.controller;
                 let outcome = resolve_combat(
                     CombatParams {
                         attacker: &source.card,
@@ -356,15 +353,15 @@ impl GameSession {
                 self.resolved_capture = Some(match outcome {
                     CombatOutcome::Victory => ResolvedCapture {
                         card_id: pending_effect.target_card_id,
-                        new_owner_id: source_owner,
-                        reason: OwnershipChangeReason::CombatVictory,
+                        new_controller: source_controller,
+                        reason: ControlChangeReason::CombatVictory,
                         combo_origin: Some(target_position),
                         ends_turn: false,
                     },
                     CombatOutcome::Defeat => ResolvedCapture {
                         card_id: pending_effect.source_card_id,
-                        new_owner_id: target_owner,
-                        reason: OwnershipChangeReason::CombatDefeat,
+                        new_controller: target_controller,
+                        reason: ControlChangeReason::CombatDefeat,
                         combo_origin: None,
                         ends_turn: true,
                     },
@@ -387,13 +384,13 @@ impl GameSession {
             &mut self.board,
             Capture {
                 card_id: capture.card_id,
-                new_owner_id: capture.new_owner_id,
+                new_controller: capture.new_controller,
                 kind: match capture.reason {
-                    OwnershipChangeReason::DirectCapture | OwnershipChangeReason::Combo => {
+                    ControlChangeReason::DirectCapture | ControlChangeReason::Combo => {
                         CaptureKind::Direct
                     }
-                    OwnershipChangeReason::CombatVictory => CaptureKind::CombatVictory,
-                    OwnershipChangeReason::CombatDefeat => CaptureKind::CombatDefeat,
+                    ControlChangeReason::CombatVictory => CaptureKind::CombatVictory,
+                    ControlChangeReason::CombatDefeat => CaptureKind::CombatDefeat,
                 },
             },
         )
@@ -414,10 +411,10 @@ impl GameSession {
             self.turn_ended_announced = false;
         }
 
-        Ok(GameEvent::OwnershipChanged {
+        Ok(GameEvent::ControlChanged {
             card_id: capture.card_id,
-            previous_owner: self.side_for_owner(outcome.previous_owner_id),
-            new_owner: self.side_for_owner(capture.new_owner_id),
+            previous_controller: outcome.previous_controller,
+            new_controller: capture.new_controller,
             reason: capture.reason,
         })
     }
@@ -446,11 +443,11 @@ impl GameSession {
     }
 
     pub fn player_score(&self) -> usize {
-        self.board.score(self.player.id)
+        self.board.score(BoardSide::Blue)
     }
 
     pub fn cpu_score(&self) -> usize {
-        self.board.score(self.cpu.id)
+        self.board.score(BoardSide::Red)
     }
 
     fn start_turn(&mut self) -> TurnResult {
@@ -503,14 +500,15 @@ impl GameSession {
     }
 
     fn build_player(is_cpu: bool, rng: &mut GameRng, used_card_ids: &mut HashSet<u64>) -> Player {
-        let id: u64 = rng.next_u64();
+        // Preserve the established seeded sequence after removing numeric player IDs.
+        let _ = rng.next_u64();
         let hand = Self::build_hand(rng, used_card_ids);
         let name = match is_cpu {
             true => "CPU".to_string(),
             false => "Player".to_string(),
         };
 
-        Player { id, name, hand }
+        Player { name, hand }
     }
 
     fn build_hand(rng: &mut GameRng, used_card_ids: &mut HashSet<u64>) -> Vec<Card> {
@@ -531,7 +529,7 @@ impl GameSession {
         let card_index = self.validate_action(action, &self.player.hand)?;
         let card = self.player.hand.remove(card_index);
 
-        Ok(self.place_card(card, self.player.id, action.position())?)
+        Ok(self.place_card(card, BoardSide::Blue, action.position())?)
     }
 
     fn cpu_turn(&mut self) -> TurnResult {
@@ -556,7 +554,7 @@ impl GameSession {
         let card_index = self.validate_action(action, &self.cpu.hand)?;
         let card = self.cpu.hand.swap_remove(card_index);
 
-        Ok(self.place_card(card, self.cpu.id, action.position())?)
+        Ok(self.place_card(card, BoardSide::Red, action.position())?)
     }
 
     fn validate_action(&self, action: GameAction, hand: &[Card]) -> Result<usize, GameError> {
@@ -569,9 +567,14 @@ impl GameSession {
             .ok_or(GameError::CardNotInHand(action.card_id()))
     }
 
-    fn place_card(&mut self, card: Card, owner_id: u64, target: Position) -> Result<(), GameError> {
+    fn place_card(
+        &mut self,
+        card: Card,
+        controller: BoardSide,
+        target: Position,
+    ) -> Result<(), GameError> {
         self.board
-            .place_card(card, target, owner_id)
+            .place_card(card, target, controller)
             .map_err(|error| GameError::Internal(error.to_string()))?;
         let effects = discover_interactions(&self.board, target)
             .map_err(|error| GameError::Internal(error.to_string()))?
@@ -606,10 +609,10 @@ impl GameSession {
         Ok(())
     }
 
-    fn get_active_player(&self) -> Result<&Player, String> {
+    fn active_board_side(&self) -> Result<BoardSide, String> {
         match self.active_player {
-            ActivePlayer::Cpu => Ok(&self.cpu),
-            ActivePlayer::Player => Ok(&self.player),
+            ActivePlayer::Cpu => Ok(BoardSide::Red),
+            ActivePlayer::Player => Ok(BoardSide::Blue),
             _ => Err("Invalid active player".to_string()),
         }
     }
@@ -634,18 +637,18 @@ impl GameSession {
         );
 
         match result {
-            CombatOutcome::Victory => self.on_victory(source_tc.owner_id, target_pos),
-            CombatOutcome::Defeat => self.on_defeat(target_tc.owner_id, source_pos),
+            CombatOutcome::Victory => self.on_victory(source_tc.controller, target_pos),
+            CombatOutcome::Defeat => self.on_defeat(target_tc.controller, source_pos),
         }
     }
 
     fn capture(&mut self, pending_effect: PendingEffect) -> TurnResult {
-        let active_player_id = self.get_active_player()?.id;
+        let active_controller = self.active_board_side()?;
         apply_capture(
             &mut self.board,
             Capture {
                 card_id: pending_effect.target_card_id,
-                new_owner_id: active_player_id,
+                new_controller: active_controller,
                 kind: CaptureKind::Direct,
             },
         )
@@ -654,7 +657,7 @@ impl GameSession {
         Ok(())
     }
 
-    fn on_victory(&mut self, owner_id: u64, pos: Position) -> TurnResult {
+    fn on_victory(&mut self, controller: BoardSide, pos: Position) -> TurnResult {
         let target_card_id = self
             .board
             .get_card(pos)
@@ -665,7 +668,7 @@ impl GameSession {
             &mut self.board,
             Capture {
                 card_id: target_card_id,
-                new_owner_id: owner_id,
+                new_controller: controller,
                 kind: CaptureKind::CombatVictory,
             },
         )
@@ -683,7 +686,7 @@ impl GameSession {
         Ok(())
     }
 
-    fn on_defeat(&mut self, owner_id: u64, pos: Position) -> TurnResult {
+    fn on_defeat(&mut self, controller: BoardSide, pos: Position) -> TurnResult {
         let source_card_id = self
             .board
             .get_card(pos)
@@ -694,7 +697,7 @@ impl GameSession {
             &mut self.board,
             Capture {
                 card_id: source_card_id,
-                new_owner_id: owner_id,
+                new_controller: controller,
                 kind: CaptureKind::CombatDefeat,
             },
         )
@@ -710,7 +713,7 @@ mod tests {
     use crate::{
         models::{
             core::{
-                board::{BoardCard, Tile},
+                board::{BoardCard, BoardSide, Tile},
                 card::{BattleClass, Card},
             },
             session::Effect,
@@ -740,8 +743,8 @@ mod tests {
                 Tile::Blocked => "blocked".to_string(),
                 Tile::Occupied(board_card) => {
                     format!(
-                        "{}:{}",
-                        board_card.owner_id,
+                        "{:?}:{}",
+                        board_card.controller,
                         card_signature(&board_card.card)
                     )
                 }
@@ -754,10 +757,7 @@ mod tests {
             ActivePlayer::Player => "player",
             ActivePlayer::Cpu => "cpu",
         };
-        let session = format!(
-            "{}:{}:{:?}:{active_player}",
-            game.player.id, game.cpu.id, game.state
-        );
+        let session = format!("{:?}:{active_player}", game.state);
 
         (board, player_hand, cpu_hand, session)
     }
@@ -765,11 +765,9 @@ mod tests {
     fn configured_game(seed: u64) -> Game {
         let mut game = Game::new(0.0, GameRng::from_seed(seed));
         game.board = Board::from_tiles(empty_tiles());
-        game.player.id = 1;
         game.player.hand = (0..MAX_HAND_CARDS)
             .map(|i| card(10 + i as u64, 0, BattleClass::Physical, 1, 1, 1))
             .collect();
-        game.cpu.id = 2;
         game.cpu.hand = (0..MAX_HAND_CARDS)
             .map(|i| card(20 + i as u64, 0, BattleClass::Physical, 1, 1, 1))
             .collect();
@@ -874,15 +872,15 @@ mod tests {
     }
 
     #[test]
-    fn capture_effect_changes_target_owner_one_effect_per_run() {
+    fn capture_effect_changes_target_controller_one_effect_per_run() {
         let mut game = configured_game(5);
         let mut tiles = empty_tiles();
         tiles[0] = Tile::Occupied(BoardCard {
-            owner_id: 1,
+            controller: BoardSide::Blue,
             card: card(10, 0, BattleClass::Physical, 0, 0, 0),
         });
         tiles[1] = Tile::Occupied(BoardCard {
-            owner_id: 2,
+            controller: BoardSide::Red,
             card: card(20, 0, BattleClass::Physical, 0, 0, 0),
         });
         game.board = Board::from_tiles(tiles);
@@ -892,8 +890,8 @@ mod tests {
         };
         game.run().unwrap();
         assert_eq!(
-            game.board.get_card(Position::new(0, 1)).unwrap().owner_id,
-            1
+            game.board.get_card(Position::new(0, 1)).unwrap().controller,
+            BoardSide::Blue
         );
         assert!(
             matches!(game.state, GamePhase::ApplyEffects { ref pending } if pending.is_empty())
@@ -944,11 +942,11 @@ mod tests {
         let mut game = configured_game(6);
         let mut tiles = empty_tiles();
         tiles[0] = Tile::Occupied(BoardCard {
-            owner_id: 1,
+            controller: BoardSide::Blue,
             card: card(10, 0, BattleClass::Physical, 0, 0, 0),
         });
         tiles[1] = Tile::Occupied(BoardCard {
-            owner_id: 2,
+            controller: BoardSide::Red,
             card: card(
                 20,
                 1 << crate::models::core::geometry::Direction::E as u8,
@@ -959,26 +957,27 @@ mod tests {
             ),
         });
         tiles[2] = Tile::Occupied(BoardCard {
-            owner_id: 2,
+            controller: BoardSide::Red,
             card: card(30, 0, BattleClass::Physical, 0, 0, 0),
         });
         game.board = Board::from_tiles(tiles);
         game.state = GamePhase::ApplyEffects {
             pending: VecDeque::new(),
         };
-        game.on_victory(1, Position::new(0, 1)).unwrap();
+        game.on_victory(BoardSide::Blue, Position::new(0, 1))
+            .unwrap();
         assert_eq!(
-            game.board.get_card(Position::new(0, 1)).unwrap().owner_id,
-            1
+            game.board.get_card(Position::new(0, 1)).unwrap().controller,
+            BoardSide::Blue
         );
         assert!(
             matches!(game.state, GamePhase::ApplyEffects { ref pending } if pending.front().is_some_and(|effect| effect.target_card_id == 30))
         );
 
-        game.on_defeat(2, Position::new(0, 0)).unwrap();
+        game.on_defeat(BoardSide::Red, Position::new(0, 0)).unwrap();
         assert_eq!(
-            game.board.get_card(Position::new(0, 0)).unwrap().owner_id,
-            2
+            game.board.get_card(Position::new(0, 0)).unwrap().controller,
+            BoardSide::Red
         );
         assert_eq!(game.state, GamePhase::EndTurn);
     }
@@ -994,7 +993,7 @@ mod tests {
 
         let tiles = std::array::from_fn(|index| {
             Tile::Occupied(BoardCard {
-                owner_id: 1,
+                controller: BoardSide::Blue,
                 card: card(100 + index as u64, 0, BattleClass::Physical, 0, 0, 0),
             })
         });
@@ -1094,15 +1093,15 @@ mod tests {
     }
 
     #[test]
-    fn combat_and_ownership_are_separate_state_after_event_transitions() {
+    fn combat_and_control_change_are_separate_event_transitions() {
         let mut game = configured_game(11);
         let mut tiles = empty_tiles();
         tiles[0] = Tile::Occupied(BoardCard {
-            owner_id: 1,
+            controller: BoardSide::Blue,
             card: card(10, 0, BattleClass::Physical, 100, 100, 100),
         });
         tiles[1] = Tile::Occupied(BoardCard {
-            owner_id: 2,
+            controller: BoardSide::Red,
             card: card(20, 0, BattleClass::Physical, 100, 100, 100),
         });
         game.board = Board::from_tiles(tiles);
@@ -1112,32 +1111,40 @@ mod tests {
         };
 
         let combat = game.advance().unwrap();
-        let (captured_id, owner_before) = match combat.events[0] {
+        let (captured_id, controller_before) = match combat.events[0] {
             GameEvent::CombatResolved {
                 attacker_id: 10,
                 defender_id: 20,
                 outcome: CombatResult::AttackerWon,
-            } => (20, 2),
+            } => (20, BoardSide::Red),
             GameEvent::CombatResolved {
                 attacker_id: 10,
                 defender_id: 20,
                 outcome: CombatResult::DefenderWon,
-            } => (10, 1),
+            } => (10, BoardSide::Blue),
             ref event => panic!("unexpected event: {event:?}"),
         };
         assert_eq!(
-            game.board.position_of_card(captured_id).unwrap().0.owner_id,
-            owner_before
+            game.board
+                .position_of_card(captured_id)
+                .unwrap()
+                .0
+                .controller,
+            controller_before
         );
 
-        let ownership = game.advance().unwrap();
+        let control_change = game.advance().unwrap();
         assert!(matches!(
-            ownership.events[0],
-            GameEvent::OwnershipChanged { card_id, .. } if card_id == captured_id
+            control_change.events[0],
+            GameEvent::ControlChanged { card_id, .. } if card_id == captured_id
         ));
         assert_ne!(
-            game.board.position_of_card(captured_id).unwrap().0.owner_id,
-            owner_before
+            game.board
+                .position_of_card(captured_id)
+                .unwrap()
+                .0
+                .controller,
+            controller_before
         );
     }
 
