@@ -11,10 +11,10 @@ use crossterm::{
 
 use crate::{
     models::{
-        core::geometry::Position,
+        core::{board::BoardSide, geometry::Position},
         session::{
-            CardSnapshot, CombatResult, GameAction, GameError, GameEvent, GameResult, GameSnapshot,
-            OwnershipChangeReason, PlayerSide,
+            CardSnapshot, CombatResult, ControlChangeReason, GameAction, GameError, GameEvent,
+            GameResult, GameSnapshot, PlayerSide,
         },
     },
     ui::ascii::{
@@ -148,6 +148,13 @@ fn side_name(side: PlayerSide) -> &'static str {
     }
 }
 
+fn controller_name(controller: BoardSide) -> &'static str {
+    match controller {
+        BoardSide::Blue => "Player",
+        BoardSide::Red => "CPU",
+    }
+}
+
 fn event_message(event: &GameEvent) -> String {
     match event {
         GameEvent::GameStarted { first_player } => {
@@ -175,22 +182,22 @@ fn event_message(event: &GameEvent) -> String {
             };
             format!("Combat between cards {attacker_id} and {defender_id}: {winner} won.")
         }
-        GameEvent::OwnershipChanged {
+        GameEvent::ControlChanged {
             card_id,
-            previous_owner,
-            new_owner,
+            previous_controller,
+            new_controller,
             reason,
         } => {
             let reason = match reason {
-                OwnershipChangeReason::DirectCapture => "direct capture",
-                OwnershipChangeReason::CombatVictory => "combat victory",
-                OwnershipChangeReason::CombatDefeat => "combat defeat",
-                OwnershipChangeReason::Combo => "combo",
+                ControlChangeReason::DirectCapture => "direct capture",
+                ControlChangeReason::CombatVictory => "combat victory",
+                ControlChangeReason::CombatDefeat => "combat defeat",
+                ControlChangeReason::Combo => "combo",
             };
             format!(
                 "Card {card_id} changed from {} to {} by {reason}.",
-                side_name(*previous_owner),
-                side_name(*new_owner)
+                controller_name(*previous_controller),
+                controller_name(*new_controller)
             )
         }
         GameEvent::TurnEnded { player } => format!("{} turn ended.", side_name(*player)),

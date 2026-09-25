@@ -1,7 +1,10 @@
 use crossterm::style::Color;
 
 use crate::{
-    models::session::{BoardTileSnapshot, CardSnapshot, GameSnapshot, PlayerSide},
+    models::{
+        core::board::BoardSide,
+        session::{BoardTileSnapshot, CardSnapshot, GameSnapshot},
+    },
     ui::ascii::{
         ascii_view::AsciiView,
         blocked_tile_view::BlockedTileView,
@@ -32,17 +35,17 @@ impl<'a> BoardView<'a> {
             .map(|t| match t {
                 BoardTileSnapshot::Empty => TileView::Empty(EmptyTileView {}),
                 BoardTileSnapshot::Blocked => TileView::Block(BlockedTileView {}),
-                BoardTileSnapshot::Occupied { owner, card } => {
-                    TileView::Card(self.build_card_view(*owner, card))
+                BoardTileSnapshot::Occupied { controller, card } => {
+                    TileView::Card(self.build_card_view(*controller, card))
                 }
             })
             .collect()
     }
 
-    fn build_card_view(&self, owner: PlayerSide, card: &'a CardSnapshot) -> CardTileView<'a> {
-        let color = match owner {
-            PlayerSide::Human => Color::Blue,
-            PlayerSide::Cpu => Color::Red,
+    fn build_card_view(&self, controller: BoardSide, card: &'a CardSnapshot) -> CardTileView<'a> {
+        let color = match controller {
+            BoardSide::Blue => Color::Blue,
+            BoardSide::Red => Color::Red,
         };
 
         CardTileView::new(card, color)

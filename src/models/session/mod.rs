@@ -9,8 +9,8 @@ mod pending_effect;
 pub use action::GameAction;
 pub use active_player::ActivePlayer;
 pub use contract::{
-    BoardTileSnapshot, CardSnapshot, CombatResult, GameError, GameEvent, GameResult, GameSnapshot,
-    GameUpdate, InteractionState, OwnershipChangeReason, PlayerSide, SessionPhase,
+    BoardTileSnapshot, CardSnapshot, CombatResult, ControlChangeReason, GameError, GameEvent,
+    GameResult, GameSnapshot, GameUpdate, InteractionState, PlayerSide, SessionPhase,
 };
 pub use effect::Effect;
 pub use game::{Game, GameSession};

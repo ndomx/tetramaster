@@ -40,7 +40,7 @@ pub fn discover_combo_captures(
         .facing()
         .into_iter()
         .filter_map(|direction| board.get_relative(position, &direction))
-        .filter(|neighbor| neighbor.owner_id != source.owner_id)
+        .filter(|neighbor| neighbor.controller != source.controller)
         .map(|neighbor| ComboCapture {
             source_card_id: source.card.id,
             target_card_id: neighbor.card.id,
@@ -56,7 +56,7 @@ mod tests {
     use super::*;
     use crate::{
         models::core::{
-            board::{BoardCard, Tile},
+            board::{BoardCard, BoardSide, Tile},
             card::BattleClass,
             geometry::Direction,
         },
@@ -64,9 +64,9 @@ mod tests {
         utils::helpers::pos2idx,
     };
 
-    fn occupied(owner_id: u64, id: u64, arrows: u8) -> Tile {
+    fn occupied(controller: BoardSide, id: u64, arrows: u8) -> Tile {
         Tile::Occupied(BoardCard {
-            owner_id,
+            controller,
             card: card(id, arrows, BattleClass::Physical, 0, 0, 0),
         })
     }
@@ -76,10 +76,10 @@ mod tests {
         let mut tiles = empty_tiles();
         let arrows =
             (1 << Direction::N as u8) | (1 << Direction::E as u8) | (1 << Direction::S as u8);
-        tiles[pos2idx(Position::new(1, 1)).unwrap()] = occupied(1, 10, arrows);
-        tiles[pos2idx(Position::new(0, 1)).unwrap()] = occupied(2, 20, 0);
-        tiles[pos2idx(Position::new(1, 2)).unwrap()] = occupied(1, 30, 0);
-        tiles[pos2idx(Position::new(2, 1)).unwrap()] = occupied(2, 40, 0);
+        tiles[pos2idx(Position::new(1, 1)).unwrap()] = occupied(BoardSide::Blue, 10, arrows);
+        tiles[pos2idx(Position::new(0, 1)).unwrap()] = occupied(BoardSide::Red, 20, 0);
+        tiles[pos2idx(Position::new(1, 2)).unwrap()] = occupied(BoardSide::Blue, 30, 0);
+        tiles[pos2idx(Position::new(2, 1)).unwrap()] = occupied(BoardSide::Red, 40, 0);
 
         assert_eq!(
             discover_combo_captures(&Board::from_tiles(tiles), Position::new(1, 1)).unwrap(),

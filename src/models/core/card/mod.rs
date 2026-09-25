@@ -10,7 +10,7 @@ pub use stats::CardStats;
 
 use crate::{models::core::geometry::Direction, utils::random::GameRng};
 
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Debug)]
 pub struct Card {
     pub id: u64,
     pub arrows: u8,

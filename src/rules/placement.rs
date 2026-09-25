@@ -63,7 +63,7 @@ pub fn discover_interactions(
                 .get_relative(position, &direction)
                 .map(|neighbor| (neighbor, direction))
         })
-        .filter(|(neighbor, _)| neighbor.owner_id != placed.owner_id)
+        .filter(|(neighbor, _)| neighbor.controller != placed.controller)
         .map(|(neighbor, direction)| PlacementInteraction {
             source_card_id: placed.card.id,
             target_card_id: neighbor.card.id,
@@ -84,7 +84,7 @@ mod tests {
     use super::*;
     use crate::{
         models::core::{
-            board::{BoardCard, Tile},
+            board::{BoardCard, BoardSide, Tile},
             card::BattleClass,
             geometry::Direction,
         },
@@ -92,9 +92,9 @@ mod tests {
         utils::{constants::BOARD_SIZE, helpers::pos2idx},
     };
 
-    fn occupied(owner_id: u64, id: u64, arrows: u8) -> Tile {
+    fn occupied(controller: BoardSide, id: u64, arrows: u8) -> Tile {
         Tile::Occupied(BoardCard {
-            owner_id,
+            controller,
             card: card(id, arrows, BattleClass::Physical, 0, 0, 0),
         })
     }
@@ -103,7 +103,7 @@ mod tests {
     fn legal_positions_include_only_empty_in_bounds_tiles_in_board_order() {
         let mut tiles = empty_tiles();
         tiles[0] = Tile::Blocked;
-        tiles[1] = occupied(1, 1, 0);
+        tiles[1] = occupied(BoardSide::Blue, 1, 0);
         let board = Board::from_tiles(tiles);
 
         let positions = legal_positions(&board);
@@ -119,9 +119,10 @@ mod tests {
     #[test]
     fn interactions_ignore_allies_and_unpointed_neighbors() {
         let mut tiles = empty_tiles();
-        tiles[pos2idx(Position::new(1, 1)).unwrap()] = occupied(1, 10, 1 << Direction::E as u8);
-        tiles[pos2idx(Position::new(1, 2)).unwrap()] = occupied(1, 20, 0);
-        tiles[pos2idx(Position::new(0, 1)).unwrap()] = occupied(2, 30, 0);
+        tiles[pos2idx(Position::new(1, 1)).unwrap()] =
+            occupied(BoardSide::Blue, 10, 1 << Direction::E as u8);
+        tiles[pos2idx(Position::new(1, 2)).unwrap()] = occupied(BoardSide::Blue, 20, 0);
+        tiles[pos2idx(Position::new(0, 1)).unwrap()] = occupied(BoardSide::Red, 30, 0);
 
         assert!(
             discover_interactions(&Board::from_tiles(tiles), Position::new(1, 1))
@@ -135,10 +136,12 @@ mod tests {
         let mut tiles = empty_tiles();
         let arrows =
             (1 << Direction::N as u8) | (1 << Direction::E as u8) | (1 << Direction::S as u8);
-        tiles[pos2idx(Position::new(1, 1)).unwrap()] = occupied(1, 10, arrows);
-        tiles[pos2idx(Position::new(0, 1)).unwrap()] = occupied(2, 20, 1 << Direction::S as u8);
-        tiles[pos2idx(Position::new(1, 2)).unwrap()] = occupied(2, 30, 0);
-        tiles[pos2idx(Position::new(2, 1)).unwrap()] = occupied(2, 40, 1 << Direction::N as u8);
+        tiles[pos2idx(Position::new(1, 1)).unwrap()] = occupied(BoardSide::Blue, 10, arrows);
+        tiles[pos2idx(Position::new(0, 1)).unwrap()] =
+            occupied(BoardSide::Red, 20, 1 << Direction::S as u8);
+        tiles[pos2idx(Position::new(1, 2)).unwrap()] = occupied(BoardSide::Red, 30, 0);
+        tiles[pos2idx(Position::new(2, 1)).unwrap()] =
+            occupied(BoardSide::Red, 40, 1 << Direction::N as u8);
 
         assert_eq!(
             discover_interactions(&Board::from_tiles(tiles), Position::new(1, 1)).unwrap(),

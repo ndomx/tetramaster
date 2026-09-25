@@ -33,7 +33,7 @@ force until the human explicitly changes them.
 ## Vocabulary
 
 - `Card`: a playable card instance, including while held in a hand.
-- `BoardCard`: a card on the board together with its current owner.
+- `BoardCard`: a card on the board together with its current controller.
 - `Tile`: `Empty`, `Blocked`, or `Occupied(BoardCard)`.
 - `GameAction::PlayCard`: a request to move a card from hand to board.
 - `GameEvent::CardPlaced`: the observable placement result.
@@ -116,10 +116,28 @@ must be agreed with the human during M1.09 before implementation.
   resolved, ownership changed, turn ended, and game finished. Combat resolution
   and its resulting ownership change are separate transitions so snapshots show
   state after exactly the reported event.
-- Public ownership uses `PlayerSide::{Human, Cpu}` rather than exposing internal
-  player IDs. Snapshots include visible board and card data, the human hand, CPU
-  hand count, scores, phase, result, and legal human actions; CPU cards remain
-  hidden.
+- M1.09 initially exposed board ownership through `PlayerSide::{Human, Cpu}`
+  rather than internal player IDs. M1.11 supersedes that representation with
+  `BoardSide`; snapshots still include visible board and card data, the human
+  hand, CPU hand count, scores, phase, result, and legal human actions while CPU
+  cards remain hidden.
+
+### M1.11 Board Control Decisions
+
+- `BoardSide::{Blue, Red}` represents match-local control of cards on the board.
+  It is independent of player identity and starting-turn order.
+- For the current human-versus-CPU session, the player controls Blue and the CPU
+  controls Red. How participants choose or receive colors in a future PvP mode is
+  deferred until that mode is designed.
+- Each `Player` carries its assigned `BoardSide`. Session orchestration reads the
+  human and CPU assignments from those players when placing, capturing, and
+  scoring cards rather than hardcoding colors at those call sites.
+- Starting-player selection remains random; Blue does not always start.
+- Board snapshots expose `BoardSide` directly. Capture events use
+  `GameEvent::ControlChanged` and `ControlChangeReason` rather than ownership
+  terminology.
+- `Player` has no numeric ID. The session continues to consume the two legacy ID
+  random draws so existing seeded games retain their characterized sequence.
 
 ## Deferred Game Rules
 

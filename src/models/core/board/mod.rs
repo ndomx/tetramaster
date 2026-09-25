@@ -2,9 +2,11 @@ use std::array;
 use std::fmt::{Display, Formatter};
 
 mod board_card;
+mod board_side;
 mod tile;
 
 pub use board_card::BoardCard;
+pub use board_side::BoardSide;
 pub use tile::Tile;
 
 use crate::{
@@ -89,7 +91,7 @@ impl Board {
         &mut self,
         card: Card,
         target: Position,
-        owner_id: u64,
+        controller: BoardSide,
     ) -> Result<(), PlacementError> {
         let idx = pos2idx(target).ok_or(PlacementError::OutOfBounds(target))?;
 
@@ -99,7 +101,7 @@ impl Board {
             Tile::Occupied(_) => return Err(PlacementError::Occupied(target)),
         }
 
-        self.tiles[idx] = Tile::Occupied(BoardCard { owner_id, card });
+        self.tiles[idx] = Tile::Occupied(BoardCard { controller, card });
 
         Ok(())
     }
@@ -108,7 +110,7 @@ impl Board {
         self.get(pos) == Some(&Tile::Empty)
     }
 
-    pub fn set_owner(&mut self, pos: Position, owner_id: u64) -> Result<(), String> {
+    pub fn set_controller(&mut self, pos: Position, controller: BoardSide) -> Result<(), String> {
         let Some(idx) = pos2idx(pos) else {
             return Err(format!("invalid pos {:?}", pos));
         };
@@ -122,7 +124,7 @@ impl Board {
             })
             .ok_or("Tile is not a card".to_string())?;
 
-        tc.owner_id = owner_id;
+        tc.controller = controller;
         Ok(())
     }
 
@@ -142,14 +144,14 @@ impl Board {
             })
     }
 
-    pub fn score(&self, owner_id: u64) -> usize {
+    pub fn score(&self, controller: BoardSide) -> usize {
         self.tiles
             .iter()
             .filter_map(|t| match t {
                 Tile::Occupied(board_card) => Some(board_card),
                 _ => None,
             })
-            .filter(|tc| tc.owner_id == owner_id)
+            .filter(|tc| tc.controller == controller)
             .count()
     }
 
@@ -194,32 +196,41 @@ mod tests {
     }
 
     #[test]
-    fn placement_lookup_ownership_scores_and_identity_are_observable() {
+    fn placement_lookup_control_scores_and_identity_are_observable() {
         let mut board = Board::from_tiles(empty_tiles());
         board
             .place_card(
                 card(7, 0, BattleClass::Physical, 1, 2, 3),
                 Position::new(1, 2),
-                10,
+                BoardSide::Blue,
             )
             .unwrap();
 
         assert!(!board.is_available(Position::new(1, 2)));
         assert_eq!(board.count_empty(), TILE_TOTAL - 1);
-        assert_eq!(board.score(10), 1);
+        assert_eq!(board.score(BoardSide::Blue), 1);
         let (placed, pos) = board.position_of_card(7).unwrap();
-        assert_eq!((pos.row, pos.col, placed.owner_id), (1, 2, 10));
+        assert_eq!(
+            (pos.row, pos.col, placed.controller),
+            (1, 2, BoardSide::Blue)
+        );
 
-        board.set_owner(Position::new(1, 2), 20).unwrap();
-        assert_eq!(board.score(10), 0);
-        assert_eq!(board.score(20), 1);
-        assert!(board.set_owner(Position::new(0, 0), 20).is_err());
+        board
+            .set_controller(Position::new(1, 2), BoardSide::Red)
+            .unwrap();
+        assert_eq!(board.score(BoardSide::Blue), 0);
+        assert_eq!(board.score(BoardSide::Red), 1);
+        assert!(
+            board
+                .set_controller(Position::new(0, 0), BoardSide::Red)
+                .is_err()
+        );
         assert!(
             board
                 .place_card(
                     card(8, 0, BattleClass::Physical, 0, 0, 0),
                     Position::new(4, 0),
-                    1
+                    BoardSide::Blue
                 )
                 .is_err()
         );
@@ -230,7 +241,7 @@ mod tests {
         let mut tiles = empty_tiles();
         tiles[0] = Tile::Blocked;
         tiles[1] = Tile::Occupied(BoardCard {
-            owner_id: 4,
+            controller: BoardSide::Blue,
             card: card(2, 0, BattleClass::Physical, 0, 0, 0),
         });
         let mut board = Board::from_tiles(tiles);
@@ -239,7 +250,7 @@ mod tests {
             board.place_card(
                 card(3, 0, BattleClass::Physical, 0, 0, 0),
                 Position::new(BOARD_SIZE, 0),
-                9,
+                BoardSide::Red,
             ),
             Err(PlacementError::OutOfBounds(Position::new(BOARD_SIZE, 0)))
         );
@@ -249,7 +260,7 @@ mod tests {
             board.place_card(
                 card(4, 0, BattleClass::Physical, 0, 0, 0),
                 Position::new(0, 0),
-                9,
+                BoardSide::Red,
             ),
             Err(PlacementError::Blocked(Position::new(0, 0)))
         );
@@ -262,11 +273,14 @@ mod tests {
             board.place_card(
                 card(5, 0, BattleClass::Physical, 0, 0, 0),
                 Position::new(0, 1),
-                9,
+                BoardSide::Red,
             ),
             Err(PlacementError::Occupied(Position::new(0, 1)))
         );
         let occupied = board.get_card(Position::new(0, 1)).unwrap();
-        assert_eq!((occupied.owner_id, occupied.card.id), (4, 2));
+        assert_eq!(
+            (occupied.controller, occupied.card.id),
+            (BoardSide::Blue, 2)
+        );
     }
 }
