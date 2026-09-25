@@ -11,9 +11,9 @@ use crate::{
             geometry::Position,
         },
         session::{
-            ActivePlayer, BoardTileSnapshot, CombatResult, ControlChangeReason, GameAction,
-            GameError, GameEvent, GamePhase, GameResult, GameSnapshot, GameUpdate,
-            InteractionState, PendingEffect, PlayerSide, SessionPhase,
+            BoardTileSnapshot, CombatResult, ControlChangeReason, GameAction, GameError, GameEvent,
+            GamePhase, GameResult, GameSnapshot, GameUpdate, InteractionState, PendingEffect,
+            PlayerSide, SessionPhase,
         },
     },
     rules::{
@@ -28,8 +28,6 @@ use crate::{
 };
 
 use super::Effect;
-
-type TurnResult = Result<(), String>;
 
 fn enqueue_combo_captures(pending: &mut VecDeque<PendingEffect>, combo_captures: &[ComboCapture]) {
     for capture in combo_captures.iter().rev() {
@@ -51,34 +49,32 @@ struct ResolvedCapture {
 }
 
 pub struct GameSession {
-    pub board: Board,
-    pub player: Player,
-    pub cpu: Player,
-    pub state: GamePhase,
-    pub active_player: ActivePlayer,
+    board: Board,
+    human_player: Player,
+    cpu_player: Player,
+    state: GamePhase,
+    active_player: Option<PlayerSide>,
     rng: GameRng,
     turn_announced: bool,
     turn_ended_announced: bool,
     resolved_capture: Option<ResolvedCapture>,
 }
 
-pub type Game = GameSession;
-
 impl GameSession {
     pub fn new(block_density: f64, mut rng: GameRng) -> Self {
         let board = Board::build(block_density, &mut rng);
 
         let mut used_card_ids = HashSet::new();
-        let player = Self::build_player(false, &mut rng, &mut used_card_ids);
-        let cpu = Self::build_player(true, &mut rng, &mut used_card_ids);
+        let human_player = Self::build_player(BoardSide::Blue, &mut rng, &mut used_card_ids);
+        let cpu_player = Self::build_player(BoardSide::Red, &mut rng, &mut used_card_ids);
 
         Self {
             board,
-            player,
-            cpu,
+            human_player,
+            cpu_player,
             rng,
             state: GamePhase::NotStarted,
-            active_player: ActivePlayer::None,
+            active_player: None,
             turn_announced: false,
             turn_ended_announced: false,
             resolved_capture: None,
@@ -103,7 +99,7 @@ impl GameSession {
             legal_positions(&self.board)
                 .into_iter()
                 .flat_map(|position| {
-                    self.player
+                    self.human_player
                         .hand
                         .iter()
                         .map(move |card| GameAction::PlayCard {
@@ -118,8 +114,8 @@ impl GameSession {
 
         GameSnapshot {
             board,
-            human_hand: self.player.hand.iter().map(Into::into).collect(),
-            cpu_hand_count: self.cpu.hand.len(),
+            human_hand: self.human_player.hand.iter().map(Into::into).collect(),
+            cpu_hand_count: self.cpu_player.hand.len(),
             human_score: self.player_score(),
             cpu_score: self.cpu_score(),
             active_player: self.active_side(),
@@ -144,9 +140,9 @@ impl GameSession {
         }
         let card_id = action.card_id();
         let position = action.position();
-        let card_index = self.validate_action(action, &self.player.hand)?;
-        let card = self.player.hand.remove(card_index);
-        self.place_card(card, self.player.board_side, position)?;
+        let card_index = self.validate_action(action, &self.human_player.hand)?;
+        let card = self.human_player.hand.remove(card_index);
+        self.place_card(card, self.human_player.board_side, position)?;
         Ok(self.update(GameEvent::CardPlaced {
             player: PlayerSide::Human,
             card_id,
@@ -169,7 +165,7 @@ impl GameSession {
         if self.state == GamePhase::Finished {
             InteractionState::Finished
         } else if self.state == GamePhase::StartTurn
-            && self.active_player == ActivePlayer::Player
+            && self.active_player == Some(PlayerSide::Human)
             && self.turn_announced
         {
             InteractionState::AwaitingPlayerAction
@@ -220,7 +216,7 @@ impl GameSession {
             }
             GamePhase::EndTurn => {
                 if self.board.count_empty() == 0
-                    || (self.player.hand.is_empty() && self.cpu.hand.is_empty())
+                    || (self.human_player.hand.is_empty() && self.cpu_player.hand.is_empty())
                 {
                     self.state = GamePhase::Finished;
                     Ok(GameEvent::GameFinished {
@@ -228,9 +224,9 @@ impl GameSession {
                     })
                 } else {
                     self.active_player = match self.active_player {
-                        ActivePlayer::Cpu => ActivePlayer::Player,
-                        ActivePlayer::Player => ActivePlayer::Cpu,
-                        ActivePlayer::None => {
+                        Some(PlayerSide::Cpu) => Some(PlayerSide::Human),
+                        Some(PlayerSide::Human) => Some(PlayerSide::Cpu),
+                        None => {
                             return Err(GameError::Internal("invalid active player".into()));
                         }
                     };
@@ -247,7 +243,7 @@ impl GameSession {
     }
 
     fn advance_cpu_placement(&mut self) -> Result<GameEvent, GameError> {
-        if self.active_player != ActivePlayer::Cpu {
+        if self.active_player != Some(PlayerSide::Cpu) {
             return Err(GameError::Internal(
                 "only the CPU may advance a started turn".into(),
             ));
@@ -255,16 +251,17 @@ impl GameSession {
         let legal_actions = legal_positions(&self.board)
             .into_iter()
             .flat_map(|position| {
-                self.cpu.hand.iter().map(move |card| GameAction::PlayCard {
-                    card_id: card.id,
-                    position,
-                })
+                self.cpu_player
+                    .hand
+                    .iter()
+                    .map(move |card| GameAction::PlayCard {
+                        card_id: card.id,
+                        position,
+                    })
             })
             .collect::<Vec<_>>();
         let action = choose_random_action(
             CpuMoveInput {
-                board: &self.board,
-                hand: &self.cpu.hand,
                 legal_actions: &legal_actions,
             },
             &mut self.rng,
@@ -272,9 +269,9 @@ impl GameSession {
         .ok_or_else(|| GameError::Internal("unable to choose a cpu action".into()))?;
         let card_id = action.card_id();
         let position = action.position();
-        let card_index = self.validate_action(action, &self.cpu.hand)?;
-        let card = self.cpu.hand.swap_remove(card_index);
-        self.place_card(card, self.cpu.board_side, position)?;
+        let card_index = self.validate_action(action, &self.cpu_player.hand)?;
+        let card = self.cpu_player.hand.swap_remove(card_index);
+        self.place_card(card, self.cpu_player.board_side, position)?;
         Ok(GameEvent::CardPlaced {
             player: PlayerSide::Cpu,
             card_id,
@@ -283,11 +280,7 @@ impl GameSession {
     }
 
     fn active_side(&self) -> Option<PlayerSide> {
-        match self.active_player {
-            ActivePlayer::Player => Some(PlayerSide::Human),
-            ActivePlayer::Cpu => Some(PlayerSide::Cpu),
-            ActivePlayer::None => None,
-        }
+        self.active_player
     }
 
     fn result(&self) -> GameResult {
@@ -333,7 +326,7 @@ impl GameSession {
                 })
             }
             Effect::Attack => {
-                let (source, source_position) = self
+                let (source, _) = self
                     .board
                     .position_of_card(pending_effect.source_card_id)
                     .ok_or_else(|| GameError::Internal("cannot find combat source".into()))?;
@@ -366,7 +359,6 @@ impl GameSession {
                         ends_turn: true,
                     },
                 });
-                let _ = source_position;
                 Ok(GameEvent::CombatResolved {
                     attacker_id: pending_effect.source_card_id,
                     defender_id: pending_effect.target_card_id,
@@ -419,104 +411,21 @@ impl GameSession {
         })
     }
 
-    pub fn player_hand(&self) -> &[Card] {
-        &self.player.hand
+    fn player_score(&self) -> usize {
+        self.board.score(self.human_player.board_side)
     }
 
-    pub fn run(&mut self) -> TurnResult {
-        match self.state {
-            GamePhase::NotStarted => Ok(self.start_game()?),
-            GamePhase::StartTurn => self.start_turn(),
-            GamePhase::ApplyEffects { pending: _ } => self.apply_effects(),
-            GamePhase::EndTurn => self.end_turn(),
-            _ => Ok(()),
-        }
+    fn cpu_score(&self) -> usize {
+        self.board.score(self.cpu_player.board_side)
     }
 
-    pub fn play_card(&mut self, action: GameAction) -> TurnResult {
-        self.player_turn(action)?;
-        Ok(())
-    }
-
-    pub fn awaiting_input(&self) -> bool {
-        self.state == GamePhase::StartTurn && self.active_player == ActivePlayer::Player
-    }
-
-    pub fn player_score(&self) -> usize {
-        self.board.score(self.player.board_side)
-    }
-
-    pub fn cpu_score(&self) -> usize {
-        self.board.score(self.cpu.board_side)
-    }
-
-    fn start_turn(&mut self) -> TurnResult {
-        if self.active_player != ActivePlayer::Cpu {
-            return Err("Active player should be CPU".to_string());
-        }
-
-        self.cpu_turn()?;
-
-        // self.state = GamePhase::ApplyEffects;
-        Ok(())
-    }
-
-    fn apply_effects(&mut self) -> TurnResult {
-        let GamePhase::ApplyEffects { ref mut pending } = self.state else {
-            return Err("invalid state".to_string());
-        };
-
-        let Some(pending_effect) = pending.pop_front() else {
-            self.state = GamePhase::EndTurn;
-            return Ok(());
-        };
-
-        match pending_effect.effect {
-            Effect::Attack => self.attack(pending_effect),
-            Effect::DirectCapture | Effect::ComboCapture => self.capture(pending_effect),
-        }
-    }
-
-    fn end_turn(&mut self) -> TurnResult {
-        if self.board.count_empty() == 0 {
-            self.state = GamePhase::Finished;
-            return Ok(());
-        }
-
-        if self.player.hand.is_empty() && self.cpu.hand.is_empty() {
-            self.state = GamePhase::Finished;
-            return Ok(());
-        }
-
-        self.active_player = match self.active_player {
-            ActivePlayer::Cpu => ActivePlayer::Player,
-            ActivePlayer::Player => ActivePlayer::Cpu,
-            _ => return Err("Invalid active player".to_string()),
-        };
-
-        self.state = GamePhase::StartTurn;
-
-        Ok(())
-    }
-
-    fn build_player(is_cpu: bool, rng: &mut GameRng, used_card_ids: &mut HashSet<u64>) -> Player {
-        // Preserve the established seeded sequence after removing numeric player IDs.
-        let _ = rng.next_u64();
+    fn build_player(
+        board_side: BoardSide,
+        rng: &mut GameRng,
+        used_card_ids: &mut HashSet<u64>,
+    ) -> Player {
         let hand = Self::build_hand(rng, used_card_ids);
-        let name = match is_cpu {
-            true => "CPU".to_string(),
-            false => "Player".to_string(),
-        };
-        let board_side = match is_cpu {
-            true => BoardSide::Red,
-            false => BoardSide::Blue,
-        };
-
-        Player {
-            board_side,
-            name,
-            hand,
-        }
+        Player { board_side, hand }
     }
 
     fn build_hand(rng: &mut GameRng, used_card_ids: &mut HashSet<u64>) -> Vec<Card> {
@@ -531,38 +440,6 @@ impl GameSession {
                 }
             })
             .collect()
-    }
-
-    fn player_turn(&mut self, action: GameAction) -> TurnResult {
-        let card_index = self.validate_action(action, &self.player.hand)?;
-        let card = self.player.hand.remove(card_index);
-
-        Ok(self.place_card(card, self.player.board_side, action.position())?)
-    }
-
-    fn cpu_turn(&mut self) -> TurnResult {
-        let legal_actions = legal_positions(&self.board)
-            .into_iter()
-            .flat_map(|target| {
-                self.cpu
-                    .hand
-                    .iter()
-                    .map(move |card| GameAction::new(card.id, target))
-            })
-            .collect::<Vec<_>>();
-        let action = choose_random_action(
-            CpuMoveInput {
-                board: &self.board,
-                hand: &self.cpu.hand,
-                legal_actions: &legal_actions,
-            },
-            &mut self.rng,
-        )
-        .ok_or("unable to choose a cpu action")?;
-        let card_index = self.validate_action(action, &self.cpu.hand)?;
-        let card = self.cpu.hand.swap_remove(card_index);
-
-        Ok(self.place_card(card, self.cpu.board_side, action.position())?)
     }
 
     fn validate_action(&self, action: GameAction, hand: &[Card]) -> Result<usize, GameError> {
@@ -607,8 +484,8 @@ impl GameSession {
 
     fn start_game(&mut self) -> Result<(), GameError> {
         self.active_player = match self.rng.random_bool(0.5) {
-            true => ActivePlayer::Player,
-            false => ActivePlayer::Cpu,
+            true => Some(PlayerSide::Human),
+            false => Some(PlayerSide::Cpu),
         };
 
         self.state = GamePhase::StartTurn;
@@ -619,99 +496,10 @@ impl GameSession {
 
     fn active_board_side(&self) -> Result<BoardSide, String> {
         match self.active_player {
-            ActivePlayer::Cpu => Ok(self.cpu.board_side),
-            ActivePlayer::Player => Ok(self.player.board_side),
-            _ => Err("Invalid active player".to_string()),
+            Some(PlayerSide::Cpu) => Ok(self.cpu_player.board_side),
+            Some(PlayerSide::Human) => Ok(self.human_player.board_side),
+            None => Err("Invalid active player".to_string()),
         }
-    }
-
-    fn attack(&mut self, pending_effect: PendingEffect) -> TurnResult {
-        let (source_tc, source_pos) = self
-            .board
-            .position_of_card(pending_effect.source_card_id)
-            .ok_or("Cannot find source")?;
-
-        let (target_tc, target_pos) = self
-            .board
-            .position_of_card(pending_effect.target_card_id)
-            .ok_or("Cannot find target")?;
-
-        let result = resolve_combat(
-            CombatParams {
-                attacker: &source_tc.card,
-                defender: &target_tc.card,
-            },
-            &mut self.rng,
-        );
-
-        match result {
-            CombatOutcome::Victory => self.on_victory(source_tc.controller, target_pos),
-            CombatOutcome::Defeat => self.on_defeat(target_tc.controller, source_pos),
-        }
-    }
-
-    fn capture(&mut self, pending_effect: PendingEffect) -> TurnResult {
-        let active_controller = self.active_board_side()?;
-        apply_capture(
-            &mut self.board,
-            Capture {
-                card_id: pending_effect.target_card_id,
-                new_controller: active_controller,
-                kind: CaptureKind::Direct,
-            },
-        )
-        .map_err(|error| error.to_string())?;
-
-        Ok(())
-    }
-
-    fn on_victory(&mut self, controller: BoardSide, pos: Position) -> TurnResult {
-        let target_card_id = self
-            .board
-            .get_card(pos)
-            .ok_or("Unable to find target")?
-            .card
-            .id;
-        apply_capture(
-            &mut self.board,
-            Capture {
-                card_id: target_card_id,
-                new_controller: controller,
-                kind: CaptureKind::CombatVictory,
-            },
-        )
-        .map_err(|error| error.to_string())?;
-
-        let combo_captures =
-            discover_combo_captures(&self.board, pos).map_err(|error| error.to_string())?;
-
-        let GamePhase::ApplyEffects { pending } = &mut self.state else {
-            return Err("skip side effects".into());
-        };
-
-        enqueue_combo_captures(pending, &combo_captures);
-
-        Ok(())
-    }
-
-    fn on_defeat(&mut self, controller: BoardSide, pos: Position) -> TurnResult {
-        let source_card_id = self
-            .board
-            .get_card(pos)
-            .ok_or("Unable to find source")?
-            .card
-            .id;
-        apply_capture(
-            &mut self.board,
-            Capture {
-                card_id: source_card_id,
-                new_controller: controller,
-                kind: CaptureKind::CombatDefeat,
-            },
-        )
-        .map_err(|error| error.to_string())?;
-        self.state = GamePhase::EndTurn;
-        Ok(())
     }
 }
 
@@ -735,7 +523,7 @@ mod tests {
             "{}:{}:{}:{}:{}:{}:{}",
             card.id,
             card.arrows,
-            card.asset.name,
+            card.definition.name,
             card.stats.attack,
             card.stats.battle_class,
             card.stats.phys_defense,
@@ -743,7 +531,7 @@ mod tests {
         )
     }
 
-    fn game_signature(game: &Game) -> (Vec<String>, Vec<String>, Vec<String>, String) {
+    fn game_signature(game: &GameSession) -> (Vec<String>, Vec<String>, Vec<String>, String) {
         let board = (0..crate::utils::constants::BOARD_SIZE)
             .flat_map(|row| game.board.row(row))
             .map(|tile| match tile {
@@ -758,26 +546,26 @@ mod tests {
                 }
             })
             .collect();
-        let player_hand = game.player.hand.iter().map(card_signature).collect();
-        let cpu_hand = game.cpu.hand.iter().map(card_signature).collect();
+        let player_hand = game.human_player.hand.iter().map(card_signature).collect();
+        let cpu_hand = game.cpu_player.hand.iter().map(card_signature).collect();
         let active_player = match game.active_player {
-            ActivePlayer::None => "none",
-            ActivePlayer::Player => "player",
-            ActivePlayer::Cpu => "cpu",
+            None => "none",
+            Some(PlayerSide::Human) => "player",
+            Some(PlayerSide::Cpu) => "cpu",
         };
         let session = format!("{:?}:{active_player}", game.state);
 
         (board, player_hand, cpu_hand, session)
     }
 
-    fn configured_game(seed: u64) -> Game {
-        let mut game = Game::new(0.0, GameRng::from_seed(seed));
+    fn configured_game(seed: u64) -> GameSession {
+        let mut game = GameSession::new(0.0, GameRng::from_seed(seed));
         game.board = Board::from_tiles(empty_tiles());
-        game.player.hand = (0..MAX_HAND_CARDS)
-            .map(|i| card(10 + i as u64, 0, BattleClass::Physical, 1, 1, 1))
+        game.human_player.hand = (0..MAX_HAND_CARDS)
+            .map(|index| card(10 + index as u64, 0, BattleClass::Physical, 1, 1, 1))
             .collect();
-        game.cpu.hand = (0..MAX_HAND_CARDS)
-            .map(|i| card(20 + i as u64, 0, BattleClass::Physical, 1, 1, 1))
+        game.cpu_player.hand = (0..MAX_HAND_CARDS)
+            .map(|index| card(20 + index as u64, 0, BattleClass::Physical, 1, 1, 1))
             .collect();
         game
     }
@@ -785,8 +573,8 @@ mod tests {
     #[test]
     fn same_seed_and_action_sequence_reproduce_the_entire_game() {
         const SEED: u64 = 0x5EED_CAFE;
-        let mut first = Game::new(0.25, GameRng::from_seed(SEED));
-        let mut second = Game::new(0.25, GameRng::from_seed(SEED));
+        let mut first = GameSession::new(0.25, GameRng::from_seed(SEED));
+        let mut second = GameSession::new(0.25, GameRng::from_seed(SEED));
 
         for step in 0..100 {
             assert_eq!(
@@ -795,19 +583,15 @@ mod tests {
                 "seed {SEED} diverged before step {step}"
             );
 
-            if first.state == GamePhase::Finished {
-                return;
-            }
-
-            if first.awaiting_input() {
-                let card_id = first.player.hand[0].id;
-                let target = legal_positions(&first.board)[0];
-                let action = GameAction::new(card_id, target);
-                first.play_card(action).unwrap();
-                second.play_card(GameAction::new(card_id, target)).unwrap();
-            } else {
-                first.run().unwrap();
-                second.run().unwrap();
+            match first.interaction_state() {
+                InteractionState::AwaitingPlayerAction => {
+                    let action = first.snapshot().legal_actions[0];
+                    assert_eq!(first.dispatch(action), second.dispatch(action));
+                }
+                InteractionState::Advancing => {
+                    assert_eq!(first.advance(), second.advance());
+                }
+                InteractionState::Finished => return,
             }
         }
 
@@ -818,63 +602,79 @@ mod tests {
     fn game_start_selects_an_active_player_and_enters_start_turn() {
         let mut game = configured_game(1);
         assert_eq!(game.state, GamePhase::NotStarted);
-        game.run().unwrap();
+        let update = game.advance().unwrap();
         assert_eq!(game.state, GamePhase::StartTurn);
+        assert!(matches!(update.events[0], GameEvent::GameStarted { .. }));
         assert!(matches!(
             game.active_player,
-            ActivePlayer::Player | ActivePlayer::Cpu
+            Some(PlayerSide::Human | PlayerSide::Cpu)
         ));
-        assert_eq!(
-            game.awaiting_input(),
-            game.active_player == ActivePlayer::Player
-        );
+        assert_eq!(game.interaction_state(), InteractionState::Advancing);
     }
 
     #[test]
     fn player_turn_rejects_unavailable_position_without_removing_card() {
         let mut game = configured_game(2);
-        game.active_player = ActivePlayer::Player;
+        game.active_player = Some(PlayerSide::Human);
         game.state = GamePhase::StartTurn;
+        game.turn_announced = true;
         let mut tiles = empty_tiles();
         tiles[0] = Tile::Blocked;
         game.board = Board::from_tiles(tiles);
-        let card_id = game.player.hand[0].id;
-        let before = game.player.hand.len();
-        assert!(
-            game.play_card(GameAction::new(card_id, Position::new(0, 0)))
-                .is_err()
+        let card_id = game.human_player.hand[0].id;
+        let before = game.human_player.hand.len();
+        assert_eq!(
+            game.dispatch(GameAction::new(card_id, Position::new(0, 0))),
+            Err(GameError::IllegalPosition(Position::new(0, 0)))
         );
-        assert_eq!(game.player.hand.len(), before);
+        assert_eq!(game.human_player.hand.len(), before);
         assert_eq!(game.state, GamePhase::StartTurn);
     }
 
     #[test]
     fn player_placement_enters_effect_processing_then_end_turn() {
         let mut game = configured_game(3);
-        game.active_player = ActivePlayer::Player;
+        game.active_player = Some(PlayerSide::Human);
         game.state = GamePhase::StartTurn;
-        let card_id = game.player.hand[0].id;
-        game.play_card(GameAction::new(card_id, Position::new(0, 0)))
+        game.turn_announced = true;
+        let card_id = game.human_player.hand[0].id;
+        game.dispatch(GameAction::new(card_id, Position::new(0, 0)))
             .unwrap();
-        assert_eq!(game.player.hand.len(), MAX_HAND_CARDS - 1);
+        assert_eq!(game.human_player.hand.len(), MAX_HAND_CARDS - 1);
         assert!(
             matches!(game.state, GamePhase::ApplyEffects { ref pending } if pending.is_empty())
         );
         assert_eq!(game.player_score(), 1);
-        game.run().unwrap();
+        let turn_ended = game.advance().unwrap();
+        assert!(matches!(turn_ended.events[0], GameEvent::TurnEnded { .. }));
         assert_eq!(game.state, GamePhase::EndTurn);
-        game.run().unwrap();
+        let next_turn = game.advance().unwrap();
+        assert!(matches!(next_turn.events[0], GameEvent::TurnStarted { .. }));
         assert_eq!(game.state, GamePhase::StartTurn);
-        assert!(game.active_player == ActivePlayer::Cpu);
+        assert_eq!(game.active_player, Some(PlayerSide::Cpu));
     }
 
     #[test]
     fn cpu_turn_chooses_an_available_position_and_consumes_one_card() {
         let mut game = configured_game(4);
-        game.active_player = ActivePlayer::Cpu;
+        game.active_player = Some(PlayerSide::Cpu);
         game.state = GamePhase::StartTurn;
-        game.run().unwrap();
-        assert_eq!(game.cpu.hand.len(), MAX_HAND_CARDS - 1);
+        let turn_started = game.advance().unwrap();
+        assert!(matches!(
+            turn_started.events[0],
+            GameEvent::TurnStarted {
+                player: PlayerSide::Cpu
+            }
+        ));
+        let update = game.advance().unwrap();
+        assert!(matches!(
+            update.events[0],
+            GameEvent::CardPlaced {
+                player: PlayerSide::Cpu,
+                ..
+            }
+        ));
+        assert_eq!(game.cpu_player.hand.len(), MAX_HAND_CARDS - 1);
         assert_eq!(game.cpu_score(), 1);
         assert!(matches!(game.state, GamePhase::ApplyEffects { .. }));
     }
@@ -892,11 +692,19 @@ mod tests {
             card: card(20, 0, BattleClass::Physical, 0, 0, 0),
         });
         game.board = Board::from_tiles(tiles);
-        game.active_player = ActivePlayer::Player;
+        game.active_player = Some(PlayerSide::Human);
         game.state = GamePhase::ApplyEffects {
             pending: VecDeque::from([PendingEffect::new(10, 20, Effect::DirectCapture)]),
         };
-        game.run().unwrap();
+        let control_change = game.advance().unwrap();
+        assert!(matches!(
+            control_change.events[0],
+            GameEvent::ControlChanged {
+                card_id: 20,
+                new_controller: BoardSide::Blue,
+                ..
+            }
+        ));
         assert_eq!(
             game.board.get_card(Position::new(0, 1)).unwrap().controller,
             BoardSide::Blue
@@ -904,7 +712,8 @@ mod tests {
         assert!(
             matches!(game.state, GamePhase::ApplyEffects { ref pending } if pending.is_empty())
         );
-        game.run().unwrap();
+        let turn_ended = game.advance().unwrap();
+        assert!(matches!(turn_ended.events[0], GameEvent::TurnEnded { .. }));
         assert_eq!(game.state, GamePhase::EndTurn);
     }
 
@@ -972,8 +781,14 @@ mod tests {
         game.state = GamePhase::ApplyEffects {
             pending: VecDeque::new(),
         };
-        game.on_victory(BoardSide::Blue, Position::new(0, 1))
-            .unwrap();
+        game.apply_resolved_capture(ResolvedCapture {
+            card_id: 20,
+            new_controller: BoardSide::Blue,
+            reason: ControlChangeReason::CombatVictory,
+            combo_origin: Some(Position::new(0, 1)),
+            ends_turn: false,
+        })
+        .unwrap();
         assert_eq!(
             game.board.get_card(Position::new(0, 1)).unwrap().controller,
             BoardSide::Blue
@@ -982,7 +797,14 @@ mod tests {
             matches!(game.state, GamePhase::ApplyEffects { ref pending } if pending.front().is_some_and(|effect| effect.target_card_id == 30))
         );
 
-        game.on_defeat(BoardSide::Red, Position::new(0, 0)).unwrap();
+        game.apply_resolved_capture(ResolvedCapture {
+            card_id: 10,
+            new_controller: BoardSide::Red,
+            reason: ControlChangeReason::CombatDefeat,
+            combo_origin: None,
+            ends_turn: true,
+        })
+        .unwrap();
         assert_eq!(
             game.board.get_card(Position::new(0, 0)).unwrap().controller,
             BoardSide::Red
@@ -994,9 +816,11 @@ mod tests {
     fn end_turn_finishes_for_full_board_or_two_empty_hands() {
         let mut game = configured_game(7);
         game.state = GamePhase::EndTurn;
-        game.player.hand.clear();
-        game.cpu.hand.clear();
-        game.run().unwrap();
+        game.turn_ended_announced = true;
+        game.human_player.hand.clear();
+        game.cpu_player.hand.clear();
+        let update = game.advance().unwrap();
+        assert!(matches!(update.events[0], GameEvent::GameFinished { .. }));
         assert_eq!(game.state, GamePhase::Finished);
 
         let tiles = std::array::from_fn(|index| {
@@ -1006,36 +830,36 @@ mod tests {
             })
         });
         game.board = Board::from_tiles(tiles);
-        game.player
+        game.human_player
             .hand
             .push(card(1, 0, BattleClass::Physical, 0, 0, 0));
         game.state = GamePhase::EndTurn;
-        game.run().unwrap();
+        game.turn_ended_announced = true;
+        let update = game.advance().unwrap();
+        assert!(matches!(update.events[0], GameEvent::GameFinished { .. }));
         assert_eq!(game.state, GamePhase::Finished);
     }
 
     #[test]
     fn automated_full_game_reaches_completion_and_preserves_card_totals() {
         let mut game = configured_game(8);
-        game.active_player = ActivePlayer::Player;
-        game.state = GamePhase::StartTurn;
         let mut steps = 0;
-        while game.state != GamePhase::Finished {
-            if game.awaiting_input() {
-                let card_id = game.player.hand[0].id;
-                let target = (0..16)
-                    .filter_map(crate::utils::helpers::idx2pos)
-                    .find(|position| game.board.is_available(*position))
-                    .unwrap();
-                game.play_card(GameAction::new(card_id, target)).unwrap();
-            } else {
-                game.run().unwrap();
+        while game.interaction_state() != InteractionState::Finished {
+            match game.interaction_state() {
+                InteractionState::AwaitingPlayerAction => {
+                    let action = game.snapshot().legal_actions[0];
+                    game.dispatch(action).unwrap();
+                }
+                InteractionState::Advancing => {
+                    game.advance().unwrap();
+                }
+                InteractionState::Finished => unreachable!(),
             }
             steps += 1;
             assert!(steps < 100);
         }
-        assert!(game.player.hand.is_empty());
-        assert!(game.cpu.hand.is_empty());
+        assert!(game.human_player.hand.is_empty());
+        assert!(game.cpu_player.hand.is_empty());
         assert_eq!(game.player_score() + game.cpu_score(), MAX_HAND_CARDS * 2);
         assert_eq!(game.board.count_empty(), 16 - MAX_HAND_CARDS * 2);
     }
@@ -1043,12 +867,15 @@ mod tests {
     #[test]
     fn invalid_missing_card_does_not_change_board() {
         let mut game = configured_game(9);
-        assert!(
-            game.play_card(GameAction::new(999, Position::new(0, 0)))
-                .is_err()
+        game.active_player = Some(PlayerSide::Human);
+        game.state = GamePhase::StartTurn;
+        game.turn_announced = true;
+        assert_eq!(
+            game.dispatch(GameAction::new(999, Position::new(0, 0))),
+            Err(GameError::CardNotInHand(999))
         );
         assert!(game.board.is_available(Position::new(0, 0)));
-        assert_eq!(game.player.hand.len(), MAX_HAND_CARDS);
+        assert_eq!(game.human_player.hand.len(), MAX_HAND_CARDS);
     }
 
     #[test]
@@ -1084,7 +911,7 @@ mod tests {
     #[test]
     fn invalid_dispatch_is_atomic_and_returns_a_typed_error() {
         let mut game = configured_game(10);
-        game.active_player = ActivePlayer::Player;
+        game.active_player = Some(PlayerSide::Human);
         game.state = GamePhase::StartTurn;
         game.turn_announced = true;
         let before = game.snapshot();
@@ -1113,7 +940,7 @@ mod tests {
             card: card(20, 0, BattleClass::Physical, 100, 100, 100),
         });
         game.board = Board::from_tiles(tiles);
-        game.active_player = ActivePlayer::Player;
+        game.active_player = Some(PlayerSide::Human);
         game.state = GamePhase::ApplyEffects {
             pending: VecDeque::from([PendingEffect::new(10, 20, Effect::Attack)]),
         };
@@ -1161,10 +988,10 @@ mod tests {
         for seed in 0..64 {
             let game = GameSession::new(0.0, GameRng::from_seed(seed));
             let ids = game
-                .player
+                .human_player
                 .hand
                 .iter()
-                .chain(&game.cpu.hand)
+                .chain(&game.cpu_player.hand)
                 .map(|card| card.id)
                 .collect::<HashSet<_>>();
             assert_eq!(ids.len(), MAX_HAND_CARDS * 2, "seed {seed}");

@@ -5,23 +5,22 @@ use std::{
 };
 
 use tetramaster::{
-    models::session::{Game, InteractionState},
+    models::session::{GameSession, InteractionState},
     ui::terminal::Terminal,
     utils::random::GameRng,
 };
 
 fn main() -> io::Result<()> {
     let seed = rand::random::<u64>();
-    println!("Game seed: {seed}");
-    let mut game = Game::new(0.25, GameRng::from_seed(seed));
+    let mut game_session = GameSession::new(0.25, GameRng::from_seed(seed));
     let mut terminal = Terminal::new(stdout());
 
-    run_game(&mut game, &mut terminal)
+    run_game(&mut game_session, &mut terminal)
 }
 
-fn run_game(game: &mut Game, terminal: &mut Terminal) -> io::Result<()> {
-    let mut snapshot = game.snapshot();
-    let mut interaction = game.interaction_state();
+fn run_game(game_session: &mut GameSession, terminal: &mut Terminal) -> io::Result<()> {
+    let mut snapshot = game_session.snapshot();
+    let mut interaction = game_session.interaction_state();
 
     terminal.render(&snapshot)?;
 
@@ -29,13 +28,10 @@ fn run_game(game: &mut Game, terminal: &mut Terminal) -> io::Result<()> {
         let update = match interaction {
             InteractionState::AwaitingPlayerAction => {
                 let action = terminal.read_action(&snapshot)?;
-                game.dispatch(action)
+                game_session.dispatch(action)
             }
-            InteractionState::Advancing => game.advance(),
-            InteractionState::Finished => {
-                terminal.render_result(snapshot.result)?;
-                return Ok(());
-            }
+            InteractionState::Advancing => game_session.advance(),
+            InteractionState::Finished => return Ok(()),
         };
 
         match update {

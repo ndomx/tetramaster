@@ -49,14 +49,14 @@ impl Terminal {
     pub fn read_action(&mut self, snapshot: &GameSnapshot) -> io::Result<GameAction> {
         loop {
             self.prompt("select a card to play: ")?;
-            let idx: usize = self.parse_input(|&v| v < snapshot.human_hand.len())?;
-            let card = &snapshot.human_hand[idx];
+            let index: usize = self.parse_input(|&value| value < snapshot.human_hand.len())?;
+            let card = &snapshot.human_hand[index];
 
             self.prompt("select a row to play card: ")?;
-            let row: usize = self.parse_input(|&v| v < BOARD_SIZE)?;
+            let row: usize = self.parse_input(|&value| value < BOARD_SIZE)?;
 
             self.prompt("select a col to play card: ")?;
-            let col: usize = self.parse_input(|&v| v < BOARD_SIZE)?;
+            let col: usize = self.parse_input(|&value| value < BOARD_SIZE)?;
 
             let action = GameAction::new(card.id, Position::new(row, col));
             if snapshot.legal_actions.contains(&action) {
@@ -77,17 +77,6 @@ impl Terminal {
         self.stdout.flush()
     }
 
-    pub fn render_result(&mut self, result: Option<GameResult>) -> io::Result<()> {
-        let message = match result {
-            Some(GameResult::Winner(PlayerSide::Human)) => "Winner: Player!!",
-            Some(GameResult::Winner(PlayerSide::Cpu)) => "Winner: CPU!!",
-            Some(GameResult::Draw) => "The game is a draw!",
-            None => "The game ended without a result.",
-        };
-        println!("{message}");
-        self.stdout.flush()
-    }
-
     fn clear(&mut self) -> io::Result<()> {
         execute!(&mut self.stdout, Clear(ClearType::All), MoveTo(0, 0))
     }
@@ -97,11 +86,11 @@ impl Terminal {
             .iter()
             .map(|card| CardTileView::new(card, crossterm::style::Color::Blue))
             .collect();
-        let height = views.first().map(|v| v.height()).unwrap_or(0);
+        let height = views.first().map(|view| view.height()).unwrap_or(0);
 
         for line in 0..height {
-            views.iter().for_each(|v| {
-                print!("{} ", v.line(line));
+            views.iter().for_each(|view| {
+                print!("{} ", view.line(line));
             });
             println!();
         }
@@ -131,7 +120,7 @@ impl Terminal {
     fn parse_input<T: FromStr>(&self, validator: impl Fn(&T) -> bool) -> io::Result<T> {
         loop {
             let input = self.read_input()?;
-            let Some(parsed) = input.parse::<T>().ok().filter(|v| validator(v)) else {
+            let Some(parsed) = input.parse::<T>().ok().filter(|value| validator(value)) else {
                 println!("invalid choice!");
                 continue;
             };

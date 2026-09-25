@@ -1,5 +1,3 @@
-use std::fmt::Display;
-
 mod battle_class;
 mod definition;
 mod stats;
@@ -14,21 +12,21 @@ use crate::{models::core::geometry::Direction, utils::random::GameRng};
 pub struct Card {
     pub id: u64,
     pub arrows: u8,
-    pub asset: &'static CardDefinition,
+    pub definition: &'static CardDefinition,
     pub stats: CardStats,
 }
 
 impl Card {
-    pub fn new(asset: &'static CardDefinition, rng: &mut GameRng) -> Self {
+    pub fn new(definition: &'static CardDefinition, rng: &mut GameRng) -> Self {
         let arrows = rng.next_u8();
         let id = rng.next_u64();
 
-        let stats = CardStats::generate(&asset.base_stats, rng);
+        let stats = CardStats::generate(&definition.base_stats, rng);
 
         Self {
             id,
             arrows,
-            asset,
+            definition,
             stats,
         }
     }
@@ -47,30 +45,10 @@ impl Card {
     }
 
     pub fn is_facing(&self, direction: Direction) -> bool {
-        let idx = direction as u8;
-        let mask: u8 = 1 << idx;
+        let index = direction as u8;
+        let mask: u8 = 1 << index;
 
         self.arrows & mask > 0
-    }
-
-    pub fn format_stats(&self) -> String {
-        let atk = self.stats.attack >> 4;
-        let phd = self.stats.phys_defense >> 4;
-        let mgd = self.stats.mag_defense >> 4;
-
-        format!("{:X}{}{:X}{:X}", atk, self.stats.battle_class, phd, mgd)
-    }
-}
-
-impl Display for Card {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{} | {} | {:#X}",
-            self.asset.name,
-            self.format_stats(),
-            self.arrows
-        )
     }
 }
 
@@ -88,11 +66,5 @@ mod tests {
         );
         assert!(card.is_facing(Direction::SW));
         assert!(!card.is_facing(Direction::S));
-    }
-
-    #[test]
-    fn displayed_stats_use_high_nibbles_and_class_letter() {
-        let card = card(1, 0, BattleClass::Flexible, 0xaf, 0x31, 0x09);
-        assert_eq!(card.format_stats(), "AX30");
     }
 }

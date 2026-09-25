@@ -49,12 +49,12 @@ force until the human explicitly changes them.
   directly under `core` because it does not naturally belong to those groups.
 - `models::session` contains application-level state and workflow for a running
   match, including actions, active-player state, effects, phases, pending work,
-  and `Game` until later steps evolve it into `GameSession`.
+  and `GameSession`.
 - The dependency direction is `models::session -> models::core`. Core models
   must not depend on session coordination, commands/rules, AI, or UI code.
 - Important types are re-exported from their conceptual group, producing paths
   such as `models::core::board::Board`, `models::core::card::Card`,
-  `models::core::geometry::Position`, and `models::session::Game`.
+  `models::core::geometry::Position`, and `models::session::GameSession`.
 - Assets own catalog record parsing and construct `CardDefinition`; core card
   definitions do not depend on the assets layer.
 - Do not add speculative model submodules. Frontend contract types introduced in
@@ -136,8 +136,35 @@ must be agreed with the human during M1.09 before implementation.
 - Board snapshots expose `BoardSide` directly. Capture events use
   `GameEvent::ControlChanged` and `ControlChangeReason` rather than ownership
   terminology.
-- `Player` has no numeric ID. The session continues to consume the two legacy ID
-  random draws so existing seeded games retain their characterized sequence.
+- `Player` has no numeric ID. M1.12 removes the obsolete random draws that once
+  generated those IDs; historical seeds therefore produce new deterministic
+  sequences.
+
+### M1.12 Cleanup Decisions
+
+- `GameSession::{new, snapshot, dispatch, advance, interaction_state}` and the
+  frontend contract types are the supported session interface. The duplicate
+  pre-contract execution path has been removed, and behavioral tests drive the
+  same contract as frontends.
+- Session state, phases, pending effects, and active-player bookkeeping are
+  private implementation details rather than a second mutable public API.
+- CPU move selection receives legal actions and seeded randomness only; unused
+  board and hand inputs are not part of its interface.
+- Catalog records and ASCII rendering modules remain internal to their adapters.
+- Active-player state uses `Option<PlayerSide>` rather than a duplicate internal
+  enum, and player construction receives its `BoardSide` explicitly.
+- Board controller mutation returns `BoardControlError`; string errors are
+  reserved for the public session boundary's internal-failure reporting.
+- `CaptureOutcome` reports only the previous controller. `CaptureKind` remains in
+  the capture request as explicit rule context.
+- Presentation formatting does not live on core `Card`; the terminal adapter
+  formats snapshot data instead.
+- The top-level engine, rules, AI, asset, UI, and utility modules remain public
+  for now, while incidental implementation modules and session bookkeeping stay
+  private.
+- Public API compatibility with pre-Milestone-2 refactor shapes is a non-goal.
+  Removing obsolete aliases, methods, fields, and payloads is preferred over
+  retaining compatibility shims.
 
 ## Deferred Game Rules
 
@@ -166,11 +193,12 @@ M1.01 records current behavior without treating it as the final design decision.
 ### M1.07 Randomness Decisions
 
 - A per-session `GameRng` wraps the existing dependency's seeded `StdRng` and is
-  owned by `Game`. There is no process-global random state, borrowed `ThreadRng`,
-  or concrete generator exposed through the frontend-facing API.
-- The TUI creates and displays a fresh seed, constructs `GameRng`, and moves it
-  into the session. A recorded seed and identical action sequence reproduce the
-  complete game.
+  owned by `GameSession`. There is no process-global random state, borrowed
+  `ThreadRng`, or concrete generator exposed through the frontend-facing API.
+- The TUI creates a fresh seed, constructs `GameRng`, and moves it into the
+  session. The seed is not printed as standalone debug output. A recorded seed
+  and identical action sequence reproduce the complete game in deterministic
+  tests.
 - Generated card stats use inclusive `0..=base` ranges. A zero base produces
   zero, and the base value itself is reachable.
 - The random combat bonus uses saturating addition, so power is capped at

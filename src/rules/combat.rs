@@ -1,5 +1,4 @@
 use crate::{
-    min,
     models::core::card::{BattleClass, Card},
     utils::random::GameRng,
 };
@@ -45,12 +44,12 @@ fn defense_stat(card: &Card, battle_class: BattleClass) -> u8 {
     match battle_class {
         BattleClass::Physical => card.stats.phys_defense,
         BattleClass::Magic => card.stats.mag_defense,
-        BattleClass::Flexible => min!(card.stats.phys_defense, card.stats.mag_defense),
-        BattleClass::Assault => min!(
-            card.stats.phys_defense,
-            card.stats.mag_defense,
-            card.stats.attack
-        ),
+        BattleClass::Flexible => card.stats.phys_defense.min(card.stats.mag_defense),
+        BattleClass::Assault => card
+            .stats
+            .phys_defense
+            .min(card.stats.mag_defense)
+            .min(card.stats.attack),
     }
 }
 

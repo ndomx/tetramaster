@@ -5,12 +5,12 @@ use crate::models::core::{
     card::{BattleClass, Card, CardDefinition, CardStats},
 };
 
-static PHYSICAL: LazyLock<CardDefinition> = LazyLock::new(|| asset(BattleClass::Physical));
-static MAGIC: LazyLock<CardDefinition> = LazyLock::new(|| asset(BattleClass::Magic));
-static FLEXIBLE: LazyLock<CardDefinition> = LazyLock::new(|| asset(BattleClass::Flexible));
-static ASSAULT: LazyLock<CardDefinition> = LazyLock::new(|| asset(BattleClass::Assault));
+static PHYSICAL: LazyLock<CardDefinition> = LazyLock::new(|| definition(BattleClass::Physical));
+static MAGIC: LazyLock<CardDefinition> = LazyLock::new(|| definition(BattleClass::Magic));
+static FLEXIBLE: LazyLock<CardDefinition> = LazyLock::new(|| definition(BattleClass::Flexible));
+static ASSAULT: LazyLock<CardDefinition> = LazyLock::new(|| definition(BattleClass::Assault));
 
-fn asset(battle_class: BattleClass) -> CardDefinition {
+fn definition(battle_class: BattleClass) -> CardDefinition {
     CardDefinition {
         index: 0,
         name: format!("{battle_class}"),
@@ -31,7 +31,7 @@ pub fn card(
     phys_defense: u8,
     mag_defense: u8,
 ) -> Card {
-    let asset = match battle_class {
+    let definition = match battle_class {
         BattleClass::Physical => &*PHYSICAL,
         BattleClass::Magic => &*MAGIC,
         BattleClass::Flexible => &*FLEXIBLE,
@@ -41,7 +41,7 @@ pub fn card(
     Card {
         id,
         arrows,
-        asset,
+        definition,
         stats: CardStats {
             attack,
             battle_class,

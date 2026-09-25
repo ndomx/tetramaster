@@ -8,7 +8,7 @@ use crate::ui::ascii::{
 
 pub enum TileView<'a> {
     Empty(EmptyTileView),
-    Block(BlockedTileView),
+    Blocked(BlockedTileView),
     Card(CardTileView<'a>),
 }
 
@@ -24,7 +24,7 @@ impl<'a> AsciiView for TileView<'a> {
     fn line(&self, line: usize) -> String {
         match self {
             TileView::Empty(view) => view.line(line),
-            TileView::Block(view) => view.line(line),
+            TileView::Blocked(view) => view.line(line),
             TileView::Card(view) => view.line(line),
         }
     }

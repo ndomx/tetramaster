@@ -60,8 +60,8 @@ impl From<&Card> for CardSnapshot {
     fn from(card: &Card) -> Self {
         Self {
             id: card.id,
-            definition_index: card.asset.index,
-            name: card.asset.name.clone(),
+            definition_index: card.definition.index,
+            name: card.definition.name.clone(),
             arrows: card.arrows,
             stats: card.stats.clone(),
         }
@@ -159,11 +159,5 @@ impl std::error::Error for GameError {}
 impl From<String> for GameError {
     fn from(message: String) -> Self {
         Self::Internal(message)
-    }
-}
-
-impl From<GameError> for String {
-    fn from(error: GameError) -> Self {
-        error.to_string()
     }
 }

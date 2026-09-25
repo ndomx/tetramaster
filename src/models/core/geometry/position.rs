@@ -24,9 +24,9 @@ impl Position {
         }
     }
 
-    fn plus(&self, x: isize, y: isize, bounds: Self) -> Option<Self> {
-        let row = x + (self.row as isize);
-        let col = y + (self.col as isize);
+    fn plus(&self, row_delta: isize, column_delta: isize, bounds: Self) -> Option<Self> {
+        let row = row_delta + (self.row as isize);
+        let col = column_delta + (self.col as isize);
 
         if row < 0 || row >= (bounds.row as isize) {
             return None;

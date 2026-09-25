@@ -1,9 +1,6 @@
 use std::fmt::{Display, Formatter};
 
-use crate::models::core::{
-    board::{Board, BoardSide},
-    geometry::Position,
-};
+use crate::models::core::board::{Board, BoardControlError, BoardSide};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CaptureKind {
@@ -21,22 +18,20 @@ pub struct Capture {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct CaptureOutcome {
-    pub position: Position,
     pub previous_controller: BoardSide,
-    pub capture: Capture,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CaptureError {
     CardNotFound(u64),
-    ControlChange(String),
+    ControlChange(BoardControlError),
 }
 
 impl Display for CaptureError {
     fn fmt(&self, formatter: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::CardNotFound(card_id) => write!(formatter, "card {card_id} was not found"),
-            Self::ControlChange(message) => formatter.write_str(message),
+            Self::ControlChange(error) => Display::fmt(error, formatter),
         }
     }
 }
@@ -54,9 +49,7 @@ pub fn apply_capture(board: &mut Board, capture: Capture) -> Result<CaptureOutco
         .map_err(CaptureError::ControlChange)?;
 
     Ok(CaptureOutcome {
-        position,
         previous_controller,
-        capture,
     })
 }
 
@@ -67,6 +60,7 @@ mod tests {
         models::core::{
             board::{BoardCard, Tile},
             card::BattleClass,
+            geometry::Position,
         },
         test_support::{card, empty_tiles},
     };
@@ -91,9 +85,7 @@ mod tests {
 
         let outcome = apply_capture(&mut board, capture).unwrap();
 
-        assert_eq!(outcome.position, Position::new(0, 1));
         assert_eq!(outcome.previous_controller, BoardSide::Red);
-        assert_eq!(outcome.capture, capture);
         assert_eq!(
             board.get_card(Position::new(0, 0)).unwrap().controller,
             BoardSide::Blue

@@ -1,2 +1,2 @@
-pub mod ascii;
+pub(crate) mod ascii;
 pub mod terminal;

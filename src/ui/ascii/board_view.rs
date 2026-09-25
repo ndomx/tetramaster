@@ -32,9 +32,9 @@ impl<'a> BoardView<'a> {
 
         tiles
             .iter()
-            .map(|t| match t {
+            .map(|tile| match tile {
                 BoardTileSnapshot::Empty => TileView::Empty(EmptyTileView {}),
-                BoardTileSnapshot::Blocked => TileView::Block(BlockedTileView {}),
+                BoardTileSnapshot::Blocked => TileView::Blocked(BlockedTileView {}),
                 BoardTileSnapshot::Occupied { controller, card } => {
                     TileView::Card(self.build_card_view(*controller, card))
                 }
