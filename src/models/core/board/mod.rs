@@ -15,7 +15,7 @@ use crate::{
         geometry::{Direction, Position},
     },
     utils::{
-        constants::{BOARD_SIZE, TILE_TOTAL},
+        constants::{BOARD_SIZE, MAX_BLOCKS, TILE_TOTAL},
         helpers::{idx2pos, pos2idx},
         random::GameRng,
     },
@@ -68,13 +68,16 @@ impl Display for BoardControlError {
 impl std::error::Error for BoardControlError {}
 
 impl Board {
-    pub fn build(density: f64, rng: &mut GameRng) -> Self {
-        Self {
-            tiles: array::from_fn(|_| match rng.random_bool(density) {
-                true => Tile::Blocked,
-                false => Tile::Empty,
-            }),
+    pub fn build(rng: &mut GameRng) -> Self {
+        let block_count = (0..MAX_BLOCKS).filter(|_| rng.random_bool(0.5)).count();
+        let positions: [usize; TILE_TOTAL] = array::from_fn(|index| index);
+        let mut tiles = array::from_fn(|_| Tile::Empty);
+
+        for &index in rng.choose_multiple(&positions, block_count) {
+            tiles[index] = Tile::Blocked;
         }
+
+        Self { tiles }
     }
 
     pub fn get(&self, position: Position) -> Option<&Tile> {
@@ -206,19 +209,15 @@ mod tests {
 
     #[test]
     fn construction_lookup_rows_and_counts_distinguish_tile_states() {
-        let mut rng = GameRng::from_seed(1);
-        let empty = Board::build(0.0, &mut rng);
-        assert_eq!(empty.count_empty(), TILE_TOTAL);
-        assert_eq!(empty.row(0).len(), BOARD_SIZE);
-        assert!(empty.row(BOARD_SIZE).is_empty());
+        for seed in 0..64 {
+            let board = Board::build(&mut GameRng::from_seed(seed));
+            let block_count = TILE_TOTAL - board.count_empty();
 
-        let blocked = Board::build(1.0, &mut rng);
-        assert_eq!(blocked.count_empty(), 0);
-        assert!(matches!(
-            blocked.get(Position::new(0, 0)),
-            Some(Tile::Blocked)
-        ));
-        assert!(blocked.get(Position::new(BOARD_SIZE, 0)).is_none());
+            assert!(block_count <= MAX_BLOCKS, "seed {seed}");
+            assert_eq!(board.row(0).len(), BOARD_SIZE);
+            assert!(board.row(BOARD_SIZE).is_empty());
+            assert!(board.get(Position::new(BOARD_SIZE, 0)).is_none());
+        }
     }
 
     #[test]
