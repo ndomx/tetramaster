@@ -129,6 +129,9 @@ must be agreed with the human during M1.09 before implementation.
 - For the current human-versus-CPU session, the player controls Blue and the CPU
   controls Red. How participants choose or receive colors in a future PvP mode is
   deferred until that mode is designed.
+- Each `Player` carries its assigned `BoardSide`. Session orchestration reads the
+  human and CPU assignments from those players when placing, capturing, and
+  scoring cards rather than hardcoding colors at those call sites.
 - Starting-player selection remains random; Blue does not always start.
 - Board snapshots expose `BoardSide` directly. Capture events use
   `GameEvent::ControlChanged` and `ControlChangeReason` rather than ownership

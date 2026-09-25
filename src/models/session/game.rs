@@ -146,7 +146,7 @@ impl GameSession {
         let position = action.position();
         let card_index = self.validate_action(action, &self.player.hand)?;
         let card = self.player.hand.remove(card_index);
-        self.place_card(card, BoardSide::Blue, position)?;
+        self.place_card(card, self.player.board_side, position)?;
         Ok(self.update(GameEvent::CardPlaced {
             player: PlayerSide::Human,
             card_id,
@@ -274,7 +274,7 @@ impl GameSession {
         let position = action.position();
         let card_index = self.validate_action(action, &self.cpu.hand)?;
         let card = self.cpu.hand.swap_remove(card_index);
-        self.place_card(card, BoardSide::Red, position)?;
+        self.place_card(card, self.cpu.board_side, position)?;
         Ok(GameEvent::CardPlaced {
             player: PlayerSide::Cpu,
             card_id,
@@ -443,11 +443,11 @@ impl GameSession {
     }
 
     pub fn player_score(&self) -> usize {
-        self.board.score(BoardSide::Blue)
+        self.board.score(self.player.board_side)
     }
 
     pub fn cpu_score(&self) -> usize {
-        self.board.score(BoardSide::Red)
+        self.board.score(self.cpu.board_side)
     }
 
     fn start_turn(&mut self) -> TurnResult {
@@ -507,8 +507,16 @@ impl GameSession {
             true => "CPU".to_string(),
             false => "Player".to_string(),
         };
+        let board_side = match is_cpu {
+            true => BoardSide::Red,
+            false => BoardSide::Blue,
+        };
 
-        Player { name, hand }
+        Player {
+            board_side,
+            name,
+            hand,
+        }
     }
 
     fn build_hand(rng: &mut GameRng, used_card_ids: &mut HashSet<u64>) -> Vec<Card> {
@@ -529,7 +537,7 @@ impl GameSession {
         let card_index = self.validate_action(action, &self.player.hand)?;
         let card = self.player.hand.remove(card_index);
 
-        Ok(self.place_card(card, BoardSide::Blue, action.position())?)
+        Ok(self.place_card(card, self.player.board_side, action.position())?)
     }
 
     fn cpu_turn(&mut self) -> TurnResult {
@@ -554,7 +562,7 @@ impl GameSession {
         let card_index = self.validate_action(action, &self.cpu.hand)?;
         let card = self.cpu.hand.swap_remove(card_index);
 
-        Ok(self.place_card(card, BoardSide::Red, action.position())?)
+        Ok(self.place_card(card, self.cpu.board_side, action.position())?)
     }
 
     fn validate_action(&self, action: GameAction, hand: &[Card]) -> Result<usize, GameError> {
@@ -611,8 +619,8 @@ impl GameSession {
 
     fn active_board_side(&self) -> Result<BoardSide, String> {
         match self.active_player {
-            ActivePlayer::Cpu => Ok(BoardSide::Red),
-            ActivePlayer::Player => Ok(BoardSide::Blue),
+            ActivePlayer::Cpu => Ok(self.cpu.board_side),
+            ActivePlayer::Player => Ok(self.player.board_side),
             _ => Err("Invalid active player".to_string()),
         }
     }

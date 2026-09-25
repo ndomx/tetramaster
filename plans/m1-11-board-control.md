@@ -20,6 +20,8 @@ identity merely to distinguish the two sides in a match.
 - Use `BoardSide::{Blue, Red}` for match-local card control.
 - In the current human-versus-CPU session, the player is always Blue and the CPU
   is always Red.
+- The assignment is stored on each `Player`; session orchestration reads the
+  assigned side rather than hardcoding colors at board-operation call sites.
 - Color assignment for a possible future PvP mode is deferred until that mode is
   designed.
 - Starting-player selection remains independent and random; Blue does not always
