@@ -12,7 +12,7 @@ use tetramaster::{
 
 fn main() -> io::Result<()> {
     let seed = rand::random::<u64>();
-    let mut game_session = GameSession::new(0.25, GameRng::from_seed(seed));
+    let mut game_session = GameSession::new(GameRng::from_seed(seed));
     let mut terminal = Terminal::new(stdout());
 
     run_game(&mut game_session, &mut terminal)

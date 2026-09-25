@@ -35,7 +35,7 @@ impl GameRng {
         values.choose(&mut self.rng)
     }
 
-    pub fn sample<'a, T>(&mut self, values: &'a [T], amount: usize) -> Vec<&'a T> {
+    pub fn choose_multiple<'a, T>(&mut self, values: &'a [T], amount: usize) -> Vec<&'a T> {
         values.sample(&mut self.rng, amount).collect()
     }
 }

@@ -61,8 +61,8 @@ pub struct GameSession {
 }
 
 impl GameSession {
-    pub fn new(block_density: f64, mut rng: GameRng) -> Self {
-        let board = Board::build(block_density, &mut rng);
+    pub fn new(mut rng: GameRng) -> Self {
+        let board = Board::build(&mut rng);
 
         let mut used_card_ids = HashSet::new();
         let human_player = Self::build_player(BoardSide::Blue, &mut rng, &mut used_card_ids);
@@ -429,7 +429,7 @@ impl GameSession {
     }
 
     fn build_hand(rng: &mut GameRng, used_card_ids: &mut HashSet<u64>) -> Vec<Card> {
-        rng.sample(&CARDS, MAX_HAND_CARDS)
+        rng.choose_multiple(&CARDS, MAX_HAND_CARDS)
             .into_iter()
             .map(|definition| {
                 loop {
@@ -559,7 +559,7 @@ mod tests {
     }
 
     fn configured_game(seed: u64) -> GameSession {
-        let mut game = GameSession::new(0.0, GameRng::from_seed(seed));
+        let mut game = GameSession::new(GameRng::from_seed(seed));
         game.board = Board::from_tiles(empty_tiles());
         game.human_player.hand = (0..MAX_HAND_CARDS)
             .map(|index| card(10 + index as u64, 0, BattleClass::Physical, 1, 1, 1))
@@ -573,8 +573,8 @@ mod tests {
     #[test]
     fn same_seed_and_action_sequence_reproduce_the_entire_game() {
         const SEED: u64 = 0x5EED_CAFE;
-        let mut first = GameSession::new(0.25, GameRng::from_seed(SEED));
-        let mut second = GameSession::new(0.25, GameRng::from_seed(SEED));
+        let mut first = GameSession::new(GameRng::from_seed(SEED));
+        let mut second = GameSession::new(GameRng::from_seed(SEED));
 
         for step in 0..100 {
             assert_eq!(
@@ -880,7 +880,7 @@ mod tests {
 
     #[test]
     fn public_contract_drives_a_complete_seeded_game_without_hidden_cpu_cards() {
-        let mut game = GameSession::new(0.25, GameRng::from_seed(0xC0DE_CAFE));
+        let mut game = GameSession::new(GameRng::from_seed(0xC0DE_CAFE));
         let initial = game.snapshot();
         assert_eq!(initial.cpu_hand_count, MAX_HAND_CARDS);
         assert_eq!(initial.human_hand.len(), MAX_HAND_CARDS);
@@ -986,7 +986,7 @@ mod tests {
     #[test]
     fn generated_runtime_card_ids_are_unique_within_a_session() {
         for seed in 0..64 {
-            let game = GameSession::new(0.0, GameRng::from_seed(seed));
+            let game = GameSession::new(GameRng::from_seed(seed));
             let ids = game
                 .human_player
                 .hand
