@@ -3,7 +3,7 @@ mod definition;
 mod stats;
 
 pub use battle_class::BattleClass;
-pub use definition::CardDefinition;
+pub use definition::{CardArtwork, CardDefinition};
 pub use stats::CardStats;
 
 use crate::{models::core::geometry::Direction, utils::random::GameRng};

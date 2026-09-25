@@ -16,8 +16,16 @@ This is a Rust terminal implementation of Final Fantasy IX Tetra Master.
 - `src/rules/` contains frontend-neutral placement, combat, capture, and combo
   rule logic.
 - `src/ui/` contains terminal and ASCII rendering.
-- `src/assets/` contains static card records and parsing into card assets.
+- `src/assets/card_catalog.ron` is the canonical embedded card catalog;
+  `src/assets/` owns its parsing and validation into card definitions. Catalog
+  order is the zero-based runtime index. Artwork metadata links to the external
+  one-based `Card001.png` through `Card100.png` references, while the only local
+  artwork is `assets/cards/fallback.png`.
 - `src/utils/` contains project-wide constants and small helpers.
+
+Catalog changes must preserve unique names and artwork URLs, 84x102 artwork
+dimensions, expanded stat tiers whose low nibble is `0xF`, typed battle classes,
+and the checked-in CSV migration fixture under `tests/fixtures/`.
 
 When adding features, keep UI concerns out of game rules. Prefer moving reusable
 rule logic into focused modules before growing `GameSession`.

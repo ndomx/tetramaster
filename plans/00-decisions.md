@@ -30,6 +30,22 @@ force until the human explicitly changes them.
 - Parse the embedded catalog once into an immutable global collection. Runtime
   editing or replacement is out of scope.
 
+### M2.01 Catalog And Artwork Decisions
+
+- Runtime `CardDefinition::index` remains zero-based and is assigned by canonical
+  RON catalog order. Artwork numbering is separately one-based and zero-padded
+  from `001` through `100`.
+- Card artwork is 84x102 PNG. Copyrighted artwork is not stored in the repository;
+  each definition records its corresponding Fandom page reference using the
+  `CardNNN.png` query parameter.
+- The repository contains one original 84x102 PNG fallback for unavailable remote
+  artwork. Artwork metadata includes the source URL, fallback path, and dimensions;
+  decoded image data remains outside the core model.
+- RON fields are required. Stats use their expanded `u8` gameplay values and
+  battle classes use named typed variants. Catalog validation enforces unique
+  names and artwork URLs, expected stat tiers, exact artwork dimensions, and the
+  position-derived artwork URL.
+
 ## Vocabulary
 
 - `Card`: a playable card instance, including while held in a hand.
