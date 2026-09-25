@@ -35,8 +35,8 @@ cargo clippy --all-targets -- -D warnings
 
 The terminal adapter drives `GameSession` exclusively through snapshots,
 `GameAction`, `dispatch`, and `advance`. Core models and rules contain no terminal
-I/O or Crossterm dependencies. Each match owns a seeded random generator, and the
-terminal prints its seed when play begins.
+I/O or Crossterm dependencies. Each match owns a seeded random generator, and
+observable game progress is presented from `GameEvent` values.
 
 The current player controls Blue cards and the CPU controls Red cards. Color is
 independent of the randomly selected starting player.

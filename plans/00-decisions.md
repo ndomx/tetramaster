@@ -168,9 +168,10 @@ M1.01 records current behavior without treating it as the final design decision.
 - A per-session `GameRng` wraps the existing dependency's seeded `StdRng` and is
   owned by `GameSession`. There is no process-global random state, borrowed
   `ThreadRng`, or concrete generator exposed through the frontend-facing API.
-- The TUI creates and displays a fresh seed, constructs `GameRng`, and moves it
-  into the session. A recorded seed and identical action sequence reproduce the
-  complete game.
+- The TUI creates a fresh seed, constructs `GameRng`, and moves it into the
+  session. The seed is not printed as standalone debug output. A recorded seed
+  and identical action sequence reproduce the complete game in deterministic
+  tests.
 - Generated card stats use inclusive `0..=base` ranges. A zero base produces
   zero, and the base value itself is reachable.
 - The random combat bonus uses saturating addition, so power is capped at

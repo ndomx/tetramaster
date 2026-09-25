@@ -77,17 +77,6 @@ impl Terminal {
         self.stdout.flush()
     }
 
-    pub fn render_result(&mut self, result: Option<GameResult>) -> io::Result<()> {
-        let message = match result {
-            Some(GameResult::Winner(PlayerSide::Human)) => "Winner: Player!!",
-            Some(GameResult::Winner(PlayerSide::Cpu)) => "Winner: CPU!!",
-            Some(GameResult::Draw) => "The game is a draw!",
-            None => "The game ended without a result.",
-        };
-        println!("{message}");
-        self.stdout.flush()
-    }
-
     fn clear(&mut self) -> io::Result<()> {
         execute!(&mut self.stdout, Clear(ClearType::All), MoveTo(0, 0))
     }

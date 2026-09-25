@@ -12,7 +12,6 @@ use tetramaster::{
 
 fn main() -> io::Result<()> {
     let seed = rand::random::<u64>();
-    println!("Game seed: {seed}");
     let mut game_session = GameSession::new(0.25, GameRng::from_seed(seed));
     let mut terminal = Terminal::new(stdout());
 
@@ -32,10 +31,7 @@ fn run_game(game_session: &mut GameSession, terminal: &mut Terminal) -> io::Resu
                 game_session.dispatch(action)
             }
             InteractionState::Advancing => game_session.advance(),
-            InteractionState::Finished => {
-                terminal.render_result(snapshot.result)?;
-                return Ok(());
-            }
+            InteractionState::Finished => return Ok(()),
         };
 
         match update {
