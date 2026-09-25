@@ -424,8 +424,6 @@ impl GameSession {
         rng: &mut GameRng,
         used_card_ids: &mut HashSet<u64>,
     ) -> Player {
-        // Preserve the established seeded sequence after removing numeric player IDs.
-        let _ = rng.next_u64();
         let hand = Self::build_hand(rng, used_card_ids);
         Player { board_side, hand }
     }

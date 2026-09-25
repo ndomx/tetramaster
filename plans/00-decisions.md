@@ -136,8 +136,9 @@ must be agreed with the human during M1.09 before implementation.
 - Board snapshots expose `BoardSide` directly. Capture events use
   `GameEvent::ControlChanged` and `ControlChangeReason` rather than ownership
   terminology.
-- `Player` has no numeric ID. The session continues to consume the two legacy ID
-  random draws so existing seeded games retain their characterized sequence.
+- `Player` has no numeric ID. M1.12 removes the obsolete random draws that once
+  generated those IDs; historical seeds therefore produce new deterministic
+  sequences.
 
 ### M1.12 Cleanup Decisions
 
@@ -156,6 +157,14 @@ must be agreed with the human during M1.09 before implementation.
   reserved for the public session boundary's internal-failure reporting.
 - `CaptureOutcome` reports only the previous controller. `CaptureKind` remains in
   the capture request as explicit rule context.
+- Presentation formatting does not live on core `Card`; the terminal adapter
+  formats snapshot data instead.
+- The top-level engine, rules, AI, asset, UI, and utility modules remain public
+  for now, while incidental implementation modules and session bookkeeping stay
+  private.
+- Public API compatibility with pre-Milestone-2 refactor shapes is a non-goal.
+  Removing obsolete aliases, methods, fields, and payloads is preferred over
+  retaining compatibility shims.
 
 ## Deferred Game Rules
 

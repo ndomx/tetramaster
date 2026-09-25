@@ -124,3 +124,17 @@ impl<'a> AsciiView for CardTileView<'a> {
         .to_string()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{models::core::card::BattleClass, test_support::card};
+
+    #[test]
+    fn displayed_stats_use_high_nibbles_and_class_letter() {
+        let card = card(1, 0, BattleClass::Flexible, 0xaf, 0x31, 0x09);
+        let snapshot = CardSnapshot::from(&card);
+
+        assert_eq!(format_stats(&snapshot), "AX30");
+    }
+}

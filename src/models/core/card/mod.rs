@@ -1,5 +1,3 @@
-use std::fmt::Display;
-
 mod battle_class;
 mod definition;
 mod stats;
@@ -52,26 +50,6 @@ impl Card {
 
         self.arrows & mask > 0
     }
-
-    pub fn format_stats(&self) -> String {
-        let atk = self.stats.attack >> 4;
-        let phd = self.stats.phys_defense >> 4;
-        let mgd = self.stats.mag_defense >> 4;
-
-        format!("{:X}{}{:X}{:X}", atk, self.stats.battle_class, phd, mgd)
-    }
-}
-
-impl Display for Card {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{} | {} | {:#X}",
-            self.definition.name,
-            self.format_stats(),
-            self.arrows
-        )
-    }
 }
 
 #[cfg(test)]
@@ -88,11 +66,5 @@ mod tests {
         );
         assert!(card.is_facing(Direction::SW));
         assert!(!card.is_facing(Direction::S));
-    }
-
-    #[test]
-    fn displayed_stats_use_high_nibbles_and_class_letter() {
-        let card = card(1, 0, BattleClass::Flexible, 0xaf, 0x31, 0x09);
-        assert_eq!(card.format_stats(), "AX30");
     }
 }
