@@ -23,8 +23,8 @@ canonical artwork metadata before building the web UI.
 - Keep the catalog embedded, immutable, and initialized once.
 - Validate unique definitions, required fields, stat ranges, and artwork paths
   with entry-specific errors.
-- Add a migration test proving all former CSV records exist in RON with equivalent
-  names and gameplay values.
+- Verify the initial migration before deleting the CSV; no permanent parallel
+  catalog or migration fixture is retained once RON becomes definitive.
 
 ## Non-goals
 

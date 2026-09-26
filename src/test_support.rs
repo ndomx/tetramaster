@@ -2,7 +2,7 @@ use std::sync::LazyLock;
 
 use crate::models::core::{
     board::Tile,
-    card::{BattleClass, Card, CardDefinition, CardStats},
+    card::{BattleClass, Card, CardArtwork, CardDefinition, CardStats},
 };
 
 static PHYSICAL: LazyLock<CardDefinition> = LazyLock::new(|| definition(BattleClass::Physical));
@@ -19,6 +19,12 @@ fn definition(battle_class: BattleClass) -> CardDefinition {
             battle_class,
             phys_defense: 0,
             mag_defense: 0,
+        },
+        artwork: CardArtwork {
+            source_url: "https://example.invalid/card.png".into(),
+            fallback_path: "assets/cards/fallback.png".into(),
+            width: 84,
+            height: 102,
         },
     }
 }

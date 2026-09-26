@@ -76,7 +76,7 @@ Dioxus, platform features, and separate binaries.
 
 ### Milestone 2: Catalog And Dioxus Web App
 
-- [ ] [M2.01 - Migrate the catalog schema and add artwork](m2-01-catalog-schema.md)
+- [x] [M2.01 - Migrate the catalog schema and add artwork](m2-01-catalog-schema.md)
 - [ ] [M2.02 - Bootstrap the Dioxus web target](m2-02-web-bootstrap.md)
 - [ ] [M2.03 - Prove a playable vertical slice](m2-03-vertical-slice.md)
 - [ ] [M2.04 - Build the full component and UX layer](m2-04-components-ux.md)

@@ -28,7 +28,10 @@ cargo clippy --all-targets -- -D warnings
 - `src/rules/`: placement, combat, capture, and combo rules.
 - `src/ai/`: CPU move selection from engine-provided legal actions.
 - `src/ui/`: terminal input and ASCII rendering.
-- `src/assets/`: the embedded, read-only card catalog.
+- `src/assets/card_catalog.ron`: the embedded, read-only card catalog. Definitions
+  use named expanded stats, typed battle classes, and external artwork references.
+- `assets/cards/fallback.png`: the original 84x102 image used when external card
+  artwork is unavailable. Third-party card images are not stored in this repository.
 - `src/utils/`: constants, coordinate helpers, and seeded randomness.
 
 ## Architecture
@@ -40,6 +43,10 @@ observable game progress is presented from `GameEvent` values.
 
 The current player controls Blue cards and the CPU controls Red cards. Color is
 independent of the randomly selected starting player.
+
+The catalog is parsed and validated once at startup. Its zero-based order remains
+the runtime definition index; artwork references use the corresponding one-based,
+three-digit card number (`Card001.png` through `Card100.png`).
 
 ## Legal notice
 
