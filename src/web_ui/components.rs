@@ -297,14 +297,9 @@ fn CardView(card: CardSnapshot, size: CardSize, owner: CardOwner, selected: bool
         CardOwner::Human => "border-blue-300 bg-gradient-to-b from-blue-700 to-blue-950",
         CardOwner::Cpu => "border-rose-300 bg-gradient-to-b from-rose-700 to-rose-950",
     };
-    let (owner_label, owner_symbol, owner_badge_class, stats_mask_class) = match owner {
-        CardOwner::Human => (
-            "Player",
-            "◆",
-            "bg-blue-950/85 text-blue-100",
-            "bg-blue-950/80",
-        ),
-        CardOwner::Cpu => ("CPU", "▲", "bg-rose-950/85 text-rose-100", "bg-rose-950/80"),
+    let (owner_label, stats_mask_class) = match owner {
+        CardOwner::Human => ("Player", "bg-blue-950/80"),
+        CardOwner::Cpu => ("CPU", "bg-rose-950/80"),
     };
     let selected_class = if selected {
         "-translate-y-2 ring-4 ring-amber-200 shadow-amber-300/30"
@@ -329,6 +324,7 @@ fn CardView(card: CardSnapshot, size: CardSize, owner: CardOwner, selected: bool
     rsx! {
         article {
             class,
+            span { class: "sr-only", "Controlled by {owner_label}" }
             img {
                 src: artwork_source,
                 alt: "",
@@ -336,11 +332,6 @@ fn CardView(card: CardSnapshot, size: CardSize, owner: CardOwner, selected: bool
                 height: "102",
                 class: "absolute inset-0 h-full w-full rounded-md object-cover",
                 onerror: move |_| artwork_state.write().use_fallback(),
-            }
-            span {
-                class: "absolute left-4 top-4 z-10 rounded px-1 py-0.5 text-[8px] font-black uppercase tracking-wider {owner_badge_class}",
-                aria_label: "Controlled by {owner_label}",
-                "{owner_symbol}"
             }
             div {
                 class: "pointer-events-none absolute inset-0 z-20",

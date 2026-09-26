@@ -160,6 +160,8 @@ force until the human explicitly changes them.
   restarted, while the game-over dialog provides an immediate play-again action.
 - Ownership, legal moves, blocked cells, selection, and disabled controls use
   labels, symbols, patterns, or borders in addition to color.
+- Card ownership uses blue/red framing plus screen-reader text; the earlier
+  northwest corner ownership symbol was removed after artwork made it redundant.
 - M2.04 uses the bundled fallback image for every card. Canonical artwork loading
   is a separately reviewed M2.04.1 stage.
 - Contested-card preview is a separately reviewed M2.04.2 stage. It must use a
