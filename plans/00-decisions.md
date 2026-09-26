@@ -151,6 +151,20 @@ force until the human explicitly changes them.
 - Restart controls, artwork, final card presentation, reusable component
   decomposition, and animation choreography remain deferred to M2.04 or M2.05.
 
+### M2.04 Component And UX Decisions
+
+- The desktop web UI targets 1280x800 and 1440x900 with an original tabletop
+  treatment using blue, amber, and slate presentation.
+- Selection toggles when the selected card is activated again; a visible cancel
+  control is also provided. An active match requires confirmation before it is
+  restarted, while the game-over dialog provides an immediate play-again action.
+- Ownership, legal moves, blocked cells, selection, and disabled controls use
+  labels, symbols, patterns, or borders in addition to color.
+- M2.04 uses the bundled fallback image for every card. Canonical artwork loading
+  is a separately reviewed M2.04.1 stage.
+- Contested-card preview is a separately reviewed M2.04.2 stage. It must use a
+  frontend-neutral interaction query rather than duplicating rules in web UI.
+
 Candidate event families are game start, turn start, card placement, combat
 resolution, ownership change, turn end, and game finish. Exact variant payloads
 must be agreed with the human during M1.09 before implementation.
