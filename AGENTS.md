@@ -24,8 +24,8 @@ This is a Rust terminal implementation of Final Fantasy IX Tetra Master.
 - `src/utils/` contains project-wide constants and small helpers.
 
 Catalog changes must preserve unique names and artwork URLs, 84x102 artwork
-dimensions, expanded stat tiers whose low nibble is `0xF`, typed battle classes,
-and the checked-in CSV migration fixture under `tests/fixtures/`.
+dimensions, expanded stat tiers whose low nibble is `0xF`, and typed battle
+classes. RON is the definitive catalog; do not add a parallel CSV record.
 
 When adding features, keep UI concerns out of game rules. Prefer moving reusable
 rule logic into focused modules before growing `GameSession`.

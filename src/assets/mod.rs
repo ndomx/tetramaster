@@ -222,40 +222,4 @@ mod tests {
         assert!(error.contains("catalog entry 1 (\"Broken\")"), "{error}");
         assert!(error.contains("attack"), "{error}");
     }
-
-    #[test]
-    fn ron_catalog_matches_the_former_csv_catalog() {
-        let legacy = include_str!("../../tests/fixtures/card_records.csv");
-        let records = legacy.lines().skip(1).collect::<Vec<_>>();
-        assert_eq!(records.len(), CARDS.len());
-
-        for (index, (legacy, card)) in records.iter().zip(CARDS.iter()).enumerate() {
-            let (name, stats) = legacy.split_once(',').expect("valid migration fixture row");
-            let stats = stats.as_bytes();
-            assert_eq!(card.index, index);
-            assert_eq!(card.name, name);
-            assert_eq!(card.base_stats.attack, expanded_hex(stats[0]));
-            assert_eq!(card.base_stats.battle_class, legacy_class(stats[1]));
-            assert_eq!(card.base_stats.phys_defense, expanded_hex(stats[2]));
-            assert_eq!(card.base_stats.mag_defense, expanded_hex(stats[3]));
-        }
-    }
-
-    fn expanded_hex(value: u8) -> u8 {
-        ((value as char)
-            .to_digit(16)
-            .expect("legacy hexadecimal stat") as u8)
-            * 16
-            + 15
-    }
-
-    fn legacy_class(value: u8) -> BattleClass {
-        match value {
-            b'P' => BattleClass::Physical,
-            b'M' => BattleClass::Magic,
-            b'X' => BattleClass::Flexible,
-            b'A' => BattleClass::Assault,
-            _ => panic!("unknown legacy battle class"),
-        }
-    }
 }
