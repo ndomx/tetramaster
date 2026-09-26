@@ -79,15 +79,12 @@ pub(super) fn GameApp(
                 OpponentHand { count: snapshot.cpu_hand_count }
 
                 div {
-                    class: "grid flex-1 grid-cols-[minmax(180px,0.7fr)_minmax(380px,1.4fr)_minmax(180px,0.7fr)] items-center gap-5 py-3",
-                    aside {
-                        class: "flex h-full min-h-0 flex-col justify-center gap-4",
-                        Score { snapshot: snapshot.clone() }
-                    }
-                    Board { snapshot: snapshot.clone(), selected_card_id, on_play_card }
-                    aside {
-                        class: "flex h-full flex-col justify-center gap-4",
+                    class: "relative flex flex-1 items-center justify-center py-2",
+                    Score { snapshot: snapshot.clone() }
+                    div {
+                        class: "flex flex-col items-center gap-2",
                         GameStatus { interaction, status, error }
+                        Board { snapshot: snapshot.clone(), selected_card_id, on_play_card }
                     }
                 }
 
@@ -121,13 +118,12 @@ fn Score(snapshot: GameSnapshot) -> Element {
     rsx! {
         section {
             aria_label: "Score",
-            class: "overflow-hidden rounded-xl border border-amber-200/25 bg-slate-950/55 shadow-xl backdrop-blur-sm",
-            h2 { class: "border-b border-white/10 px-4 py-3 text-xs font-bold uppercase tracking-[0.24em] text-amber-200/70", "Score" }
-            div {
-                class: "grid grid-cols-2 divide-x divide-white/10",
-                div { class: "p-4 text-center", p { class: "text-xs font-bold uppercase tracking-wider text-blue-300", "◆ Player" } p { class: "mt-1 font-serif text-4xl font-black text-blue-100", "{snapshot.human_score}" } }
-                div { class: "p-4 text-center", p { class: "text-xs font-bold uppercase tracking-wider text-rose-300", "CPU ▲" } p { class: "mt-1 font-serif text-4xl font-black text-rose-100", "{snapshot.cpu_score}" } }
-            }
+            class: "absolute left-[8%] top-1/2 flex -translate-y-1/2 flex-col items-center gap-1 font-serif italic drop-shadow-lg",
+            span { class: "text-xs font-black uppercase tracking-widest text-rose-300", "CPU ▲" }
+            strong { class: "text-5xl font-black text-rose-300", "{snapshot.cpu_score}" }
+            span { class: "my-1 h-px w-10 -rotate-12 bg-amber-200/60" }
+            strong { class: "text-5xl font-black text-blue-200", "{snapshot.human_score}" }
+            span { class: "text-xs font-black uppercase tracking-widest text-blue-300", "◆ Player" }
         }
     }
 }
@@ -163,10 +159,10 @@ fn GameStatus(interaction: InteractionState, status: String, error: Option<Strin
         section {
             aria_live: "polite",
             aria_label: "Game status",
-            class: "min-h-32 rounded-xl border border-white/10 bg-slate-950/45 p-4 shadow-xl backdrop-blur-sm",
-            p { class: "text-xs font-bold uppercase tracking-[0.2em] text-amber-200", "{marker} {label}" }
-            p { class: "mt-3 text-sm leading-relaxed text-slate-200", "{status}" }
-            if let Some(error) = error { p { role: "alert", class: "mt-3 border-l-2 border-rose-400 pl-3 text-sm font-semibold text-rose-200", "{error}" } }
+            class: "flex min-h-7 max-w-[520px] items-center gap-3 rounded-full border border-white/10 bg-slate-950/55 px-4 py-1 text-xs shadow backdrop-blur-sm",
+            p { class: "shrink-0 font-bold uppercase tracking-[0.16em] text-amber-200", "{marker} {label}" }
+            p { class: "truncate text-slate-300", "{status}" }
+            if let Some(error) = error { p { role: "alert", class: "truncate font-semibold text-rose-200", "{error}" } }
         }
     }
 }
@@ -311,7 +307,7 @@ fn CardView(card: CardSnapshot, size: CardSize, owner: CardOwner, selected: bool
         CardSize::Hand => "text-xs",
     };
     let class = format!(
-        "relative h-full w-full overflow-hidden rounded-lg border-2 {owner_class} {selected_class} text-left shadow-lg transition"
+        "relative h-full w-full overflow-visible rounded-lg border-2 {owner_class} {selected_class} text-left shadow-lg transition"
     );
     let stats = format_card_stats(&card);
     let stats_label = format!(
@@ -324,18 +320,18 @@ fn CardView(card: CardSnapshot, size: CardSize, owner: CardOwner, selected: bool
     rsx! {
         article {
             class,
-            img { src: CARD_ARTWORK, alt: "", width: "84", height: "102", class: "absolute inset-0 h-full w-full object-cover" }
+            img { src: CARD_ARTWORK, alt: "", width: "84", height: "102", class: "absolute inset-0 h-full w-full rounded-md object-cover" }
             span {
-                class: "absolute left-3 top-3 z-10 rounded px-1 py-0.5 text-[8px] font-black uppercase tracking-wider {owner_badge_class}",
+                class: "absolute left-4 top-4 z-10 rounded px-1 py-0.5 text-[8px] font-black uppercase tracking-wider {owner_badge_class}",
                 aria_label: "Controlled by {owner_label}",
                 "{owner_symbol}"
             }
             div {
                 class: "pointer-events-none absolute inset-0 z-20",
-                for arrow in arrow_markers(card.arrows) { span { class: "absolute flex h-3 w-3 items-center justify-center text-[11px] font-black leading-none text-yellow-300 drop-shadow-[0_1px_1px_rgba(0,0,0,0.95)] {arrow.class}", aria_hidden: "true", "▲" } }
+                for arrow in arrow_markers(card.arrows) { span { class: "absolute flex h-4 w-4 items-center justify-center text-sm font-black leading-none text-yellow-300 drop-shadow-[0_1px_1px_rgba(0,0,0,0.95)] {arrow.class}", aria_hidden: "true", "▲" } }
             }
             div {
-                class: "absolute inset-x-1 bottom-1 z-10 overflow-hidden rounded text-center shadow backdrop-blur-[1px] {stats_mask_class}",
+                class: "absolute inset-x-1 bottom-2 z-10 overflow-hidden rounded text-center shadow backdrop-blur-[1px] {stats_mask_class}",
                 h3 { class: "{name_size} truncate px-1 pt-0.5 font-bold leading-tight text-white", title: "{card.name}", "{card.name}" }
                 div { class: "px-1 py-0.5 font-mono text-[11px] font-black tracking-[0.16em] text-amber-100", aria_label: stats_label, "{stats}" }
             }
@@ -349,14 +345,14 @@ struct ArrowMarker {
 
 fn arrow_markers(mask: u8) -> Vec<ArrowMarker> {
     const ARROWS: [&str; 8] = [
-        "left-1/2 top-0 -translate-x-1/2",
-        "right-0 top-0 rotate-45",
-        "right-0 top-1/2 -translate-y-1/2 rotate-90",
-        "bottom-0 right-0 rotate-[135deg]",
-        "bottom-0 left-1/2 -translate-x-1/2 rotate-180",
-        "bottom-0 left-0 -rotate-[135deg]",
-        "left-0 top-1/2 -translate-y-1/2 -rotate-90",
-        "left-0 top-0 -rotate-45",
+        "left-1/2 top-0 -translate-x-1/2 -translate-y-1/2",
+        "right-0 top-0 translate-x-1/2 -translate-y-1/2 rotate-45",
+        "right-0 top-1/2 translate-x-1/2 -translate-y-1/2 rotate-90",
+        "bottom-0 right-0 translate-x-1/2 translate-y-1/2 rotate-[135deg]",
+        "bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 rotate-180",
+        "bottom-0 left-0 -translate-x-1/2 translate-y-1/2 -rotate-[135deg]",
+        "left-0 top-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-90",
+        "left-0 top-0 -translate-x-1/2 -translate-y-1/2 -rotate-45",
     ];
     ARROWS
         .iter()
