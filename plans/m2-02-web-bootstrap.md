@@ -40,3 +40,19 @@ and working TUI.
 The kickoff must record exact commands for formatting, all-feature tests and
 Clippy, the TUI run, the WebAssembly check, and `dx serve --web` or its approved
 current equivalent.
+
+## Completion Notes
+
+- Dioxus 0.7.10 is exposed through a browser-only `web` feature; Crossterm is an
+  optional native-only dependency behind the default `tui` feature.
+- The native and browser binaries are `tetramaster-tui` and `tetramaster-web`.
+- The static browser shell uses the Dioxus-managed Tailwind pipeline without a
+  router, Fullstack, SSR, backend, desktop, or mobile feature.
+- `cargo fmt --check`, `cargo test --all-features`, all-target/all-feature
+  Clippy with warnings denied, and the explicit WebAssembly check pass.
+- The WebAssembly dependency graph contains no Crossterm package.
+- CI reports formatting, TUI tests/lint, and web tests/Wasm lint as separate jobs
+  so frontend-specific failures retain clear ownership.
+- `dx serve --web --bin tetramaster-web` built and served the shell at
+  `http://127.0.0.1:8080`; a browser rendered the title, shell text, and generated
+  Tailwind styling.

@@ -11,8 +11,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  rust:
-    name: Format, test, and lint
+  format:
+    name: Formatting
     runs-on: ubuntu-latest
 
     steps:
@@ -22,18 +22,57 @@ jobs:
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
-          components: rustfmt, clippy
-
-      - name: Cache Rust build artifacts
-        uses: Swatinem/rust-cache@v2
+          components: rustfmt
 
       - name: Check formatting
         run: cargo fmt --check
 
+  tui:
+    name: TUI - test and lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - name: Cache Rust build artifacts
+        uses: Swatinem/rust-cache@v2
+
       - name: Run tests twice
         run: |
-          cargo test --locked
-          cargo test --locked
+          cargo test --locked --no-default-features --features tui
+          cargo test --locked --no-default-features --features tui
 
       - name: Run Clippy
-        run: cargo clippy --locked --all-targets -- -D warnings
+        run: cargo clippy --locked --all-targets --no-default-features --features tui -- -D warnings
+
+  web:
+    name: Web - test, lint, and Wasm check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+          targets: wasm32-unknown-unknown
+
+      - name: Cache Rust build artifacts
+        uses: Swatinem/rust-cache@v2
+
+      - name: Run library tests with the web feature
+        run: cargo test --locked --lib --no-default-features --features web
+
+      - name: Run WebAssembly Clippy
+        run: cargo clippy --locked --target wasm32-unknown-unknown --no-default-features --features web --bin tetramaster-web -- -D warnings
+
+      - name: Check WebAssembly target
+        run: cargo check --locked --target wasm32-unknown-unknown --no-default-features --features web --bin tetramaster-web

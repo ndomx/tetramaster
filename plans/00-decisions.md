@@ -116,6 +116,22 @@ force until the human explicitly changes them.
 - Timing, selection, hover, animation progress, formatting, and I/O belong to the
   frontend adapters.
 
+### M2.02 Web Bootstrap Decisions
+
+- Keep one Cargo package with the shared library and two binaries named
+  `tetramaster-tui` and `tetramaster-web`.
+- Use Dioxus 0.7.10 with `tui` and `web` package features. `tui` remains the
+  default feature for native development.
+- Crossterm is an optional native-only dependency. Terminal modules are also
+  source-gated away from WebAssembly builds.
+- The web target is client-rendered WebAssembly and uses the Dioxus-managed
+  Tailwind integration. `tailwind.css` is the source and
+  `assets/tailwind.css` is the generated stylesheet.
+- Router, Fullstack, SSR, backend, desktop, and mobile features remain out of
+  scope. The bootstrap is handwritten instead of generated with `dx new`.
+- WebAssembly enables the `getrandom` browser backend so the shared seeded RNG
+  dependency compiles for `wasm32-unknown-unknown`.
+
 Candidate event families are game start, turn start, card placement, combat
 resolution, ownership change, turn end, and game finish. Exact variant payloads
 must be agreed with the human during M1.09 before implementation.

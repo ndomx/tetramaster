@@ -3,8 +3,29 @@ name = "tetramaster"
 version = "0.1.0"
 edition = "2024"
 
+[features]
+default = ["tui"]
+tui = ["dep:crossterm"]
+web = ["dep:dioxus", "dioxus/devtools", "dioxus/web"]
+
 [dependencies]
-crossterm = "0.29.0"
+dioxus = { version = "0.7.10", default-features = false, features = ["launch", "lib"], optional = true }
 rand = "0.10.2"
 ron = "0.12.2"
 serde = { version = "1.0.229", features = ["derive"] }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+crossterm = { version = "0.29.0", optional = true }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+getrandom = { version = "0.4", features = ["wasm_js"] }
+
+[[bin]]
+name = "tetramaster-tui"
+path = "src/bin/tui.rs"
+required-features = ["tui"]
+
+[[bin]]
+name = "tetramaster-web"
+path = "src/bin/web.rs"
+required-features = ["web"]

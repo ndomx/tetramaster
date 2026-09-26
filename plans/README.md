@@ -77,7 +77,7 @@ Dioxus, platform features, and separate binaries.
 ### Milestone 2: Catalog And Dioxus Web App
 
 - [x] [M2.01 - Migrate the catalog schema and add artwork](m2-01-catalog-schema.md)
-- [ ] [M2.02 - Bootstrap the Dioxus web target](m2-02-web-bootstrap.md)
+- [x] [M2.02 - Bootstrap the Dioxus web target](m2-02-web-bootstrap.md)
 - [ ] [M2.03 - Prove a playable vertical slice](m2-03-vertical-slice.md)
 - [ ] [M2.04 - Build the full component and UX layer](m2-04-components-ux.md)
 - [ ] [M2.05 - Add event-driven animation and polish](m2-05-animation-polish.md)
@@ -101,13 +101,15 @@ Dioxus, platform features, and separate binaries.
 
 ## Current Verification Baseline
 
-Until an approved step changes these commands:
+Current native and browser checks:
 
 ```sh
 cargo fmt --check
-cargo test
-cargo clippy --all-targets -- -D warnings
-cargo run
+cargo test --all-features
+cargo clippy --all-targets --all-features -- -D warnings
+cargo run --bin tetramaster-tui --features tui
+cargo check --target wasm32-unknown-unknown --no-default-features --features web --bin tetramaster-web
+dx serve --web --bin tetramaster-web
 ```
 
 Each step lists additional checks and must update this baseline when its accepted
