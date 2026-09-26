@@ -172,6 +172,21 @@ force until the human explicitly changes them.
   live behind a `?` help dialog, card art fills the card face, displayed stats use
   the TUI's high-nibble format, and directional arrows use yellow triangles.
 
+### M2.04.1 Artwork Resolver Decisions
+
+- Canonical third-party artwork remains outside version control. Developers may
+  supply an optional local artwork pack under `assets/cards/custom/` using the
+  one-based names `Card001.png` through `Card100.png`.
+- Custom artwork must be PNG whose dimensions are a positive integer multiple of
+  84x102. The UI retains the logical 84:102 aspect ratio regardless of source
+  resolution.
+- The web adapter resolves `CardSnapshot::definition_index` to the corresponding
+  custom filename. A failed request switches that card to the bundled fallback
+  and does not retry the missing source during that component's lifetime.
+- Dioxus bundles the entire optional artwork directory so dynamically resolved
+  filenames work with hashed production asset paths. Custom PNGs are ignored by
+  Git, and developers are responsible for permission to use supplied artwork.
+
 Candidate event families are game start, turn start, card placement, combat
 resolution, ownership change, turn end, and game finish. Exact variant payloads
 must be agreed with the human during M1.09 before implementation.

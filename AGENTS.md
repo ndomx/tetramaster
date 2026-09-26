@@ -23,13 +23,16 @@ This is a Rust terminal implementation of Final Fantasy IX Tetra Master.
 - `src/assets/card_catalog.ron` is the canonical embedded card catalog;
   `src/assets/` owns its parsing and validation into card definitions. Catalog
   order is the zero-based runtime index. Artwork metadata links to the external
-  one-based `Card001.png` through `Card100.png` references, while the only local
-  artwork is `assets/cards/fallback.png`.
+  one-based `Card001.png` through `Card100.png` references. The bundled local
+  artwork is `assets/cards/fallback.png`; optional developer-provided PNGs live
+  under the Git-ignored `assets/cards/custom/` directory.
 - `src/utils/` contains project-wide constants and small helpers.
 
 Catalog changes must preserve unique names and artwork URLs, 84x102 artwork
 dimensions, expanded stat tiers whose low nibble is `0xF`, and typed battle
 classes. RON is the definitive catalog; do not add a parallel CSV record.
+Custom artwork may use any positive integer multiple of 84x102 and must retain
+the same aspect ratio.
 
 When adding features, keep UI concerns out of game rules. Prefer moving reusable
 rule logic into focused modules before growing `GameSession`.

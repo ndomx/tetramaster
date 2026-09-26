@@ -1,6 +1,7 @@
 use dioxus::prelude::*;
 
 use crate::{
+    assets::artwork::{ArtworkLoadState, ArtworkResolver},
     models::{
         core::{board::BoardSide, geometry::Position},
         session::{
@@ -12,7 +13,8 @@ use crate::{
 
 use super::action_for_selection;
 
-const CARD_ARTWORK: Asset = asset!("/assets/cards/fallback.png");
+const FALLBACK_CARD_ARTWORK: Asset = asset!("/assets/cards/fallback.png");
+const CUSTOM_CARD_ARTWORK: Asset = asset!("/assets/cards/custom");
 
 #[derive(Clone, Copy, PartialEq)]
 enum CardSize {
@@ -140,7 +142,7 @@ fn OpponentHand(count: usize) -> Element {
                     role: "img",
                     aria_label: "Hidden opponent card {index + 1}",
                     class: "relative h-14 w-12 overflow-hidden rounded border-2 border-rose-300 bg-rose-950 shadow-lg",
-                    img { src: CARD_ARTWORK, alt: "", class: "absolute inset-0 h-full w-full object-cover opacity-75" }
+                    img { src: FALLBACK_CARD_ARTWORK, alt: "", class: "absolute inset-0 h-full w-full object-cover opacity-75" }
                     span { class: "absolute inset-0 flex items-center justify-center bg-rose-950/30 text-xs font-black text-white", "▲" }
                 }
             }
@@ -284,6 +286,13 @@ fn Hand(
 
 #[component]
 fn CardView(card: CardSnapshot, size: CardSize, owner: CardOwner, selected: bool) -> Element {
+    let custom_base_url = CUSTOM_CARD_ARTWORK.to_string();
+    let fallback_url = FALLBACK_CARD_ARTWORK.to_string();
+    let artwork = ArtworkResolver::new(&custom_base_url, &fallback_url)
+        .resolve(card.definition_index)
+        .expect("card snapshots must reference a catalog definition");
+    let mut artwork_state = use_signal(|| ArtworkLoadState::Primary);
+    let artwork_source = artwork_state().source(&artwork).to_owned();
     let owner_class = match owner {
         CardOwner::Human => "border-blue-300 bg-gradient-to-b from-blue-700 to-blue-950",
         CardOwner::Cpu => "border-rose-300 bg-gradient-to-b from-rose-700 to-rose-950",
@@ -320,7 +329,14 @@ fn CardView(card: CardSnapshot, size: CardSize, owner: CardOwner, selected: bool
     rsx! {
         article {
             class,
-            img { src: CARD_ARTWORK, alt: "", width: "84", height: "102", class: "absolute inset-0 h-full w-full rounded-md object-cover" }
+            img {
+                src: artwork_source,
+                alt: "",
+                width: "84",
+                height: "102",
+                class: "absolute inset-0 h-full w-full rounded-md object-cover",
+                onerror: move |_| artwork_state.write().use_fallback(),
+            }
             span {
                 class: "absolute left-4 top-4 z-10 rounded px-1 py-0.5 text-[8px] font-black uppercase tracking-wider {owner_badge_class}",
                 aria_label: "Controlled by {owner_label}",
