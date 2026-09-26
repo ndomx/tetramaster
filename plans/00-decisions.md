@@ -132,6 +132,46 @@ force until the human explicitly changes them.
 - WebAssembly enables the `getrandom` browser backend so the shared seeded RNG
   dependency compiles for `wasm32-unknown-unknown`.
 
+### M2.03 Playable Vertical Slice Decisions
+
+- The web adapter owns `GameSession`, the latest `GameSnapshot`, interaction
+  state, selected-card ID, status text, and error text. It does not inspect or
+  mutate private session state.
+- Browser matches use a fresh random seed. Deterministic adapter tests use a
+  recorded seed.
+- Selecting a visible human card and a legal board position produces a
+  `GameAction::PlayCard` only when that exact action appears in the snapshot's
+  legal actions.
+- Automatic transitions schedule one `advance` call per Dioxus task while the
+  interaction state is `Advancing`. The vertical slice adds no artificial delay
+  or animation timing.
+- The vertical slice uses deliberately minimal Tailwind styling: Blue and Red
+  identify board control, blocked cells are labeled, selected cards have a
+  visible outline, and legal cells are labeled `Play`.
+- Restart controls, artwork, final card presentation, reusable component
+  decomposition, and animation choreography remain deferred to M2.04 or M2.05.
+
+### M2.04 Component And UX Decisions
+
+- The desktop web UI targets 1280x800 and 1440x900 with an original tabletop
+  treatment using blue, amber, and slate presentation.
+- Selection toggles when the selected card is activated again; a visible cancel
+  control is also provided. An active match requires confirmation before it is
+  restarted, while the game-over dialog provides an immediate play-again action.
+- Ownership, legal moves, blocked cells, selection, and disabled controls use
+  labels, symbols, patterns, or borders in addition to color.
+- M2.04 uses the bundled fallback image for every card. Canonical artwork loading
+  is a separately reviewed M2.04.1 stage.
+- Contested-card preview is a separately reviewed M2.04.2 stage. It must use a
+  frontend-neutral interaction query rather than duplicating rules in web UI.
+- M2.04.2 also exposes the already-resolved attack and defense power through the
+  combat event so both combatants can display the exact values used by the engine.
+  It does not preview randomness before combat begins.
+- The M2.04 board omits coordinate labels and renders empty cells transparently.
+  The opponent hand is visible only as a count of secret card backs. Instructions
+  live behind a `?` help dialog, card art fills the card face, displayed stats use
+  the TUI's high-nibble format, and directional arrows use yellow triangles.
+
 Candidate event families are game start, turn start, card placement, combat
 resolution, ownership change, turn end, and game finish. Exact variant payloads
 must be agreed with the human during M1.09 before implementation.
