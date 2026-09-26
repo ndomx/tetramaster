@@ -25,6 +25,7 @@ struct WebGame {
     status: String,
     error: Option<String>,
     restart_confirmation_open: bool,
+    help_open: bool,
 }
 
 impl WebGame {
@@ -41,6 +42,7 @@ impl WebGame {
             status: "Starting game…".into(),
             error: None,
             restart_confirmation_open: false,
+            help_open: false,
         }
     }
 
@@ -67,9 +69,19 @@ impl WebGame {
     fn handle_escape(&mut self) {
         if self.restart_confirmation_open {
             self.cancel_restart();
+        } else if self.help_open {
+            self.help_open = false;
         } else {
             self.cancel_selection();
         }
+    }
+
+    fn show_help(&mut self) {
+        self.help_open = true;
+    }
+
+    fn hide_help(&mut self) {
+        self.help_open = false;
     }
 
     fn play_selected_card(&mut self, position: Position) {
@@ -160,6 +172,7 @@ pub fn App() -> Element {
     let status = game.read().status.clone();
     let error = game.read().error.clone();
     let restart_confirmation_open = game.read().restart_confirmation_open;
+    let help_open = game.read().help_open;
 
     rsx! {
         document::Stylesheet { href: TAILWIND_CSS }
@@ -170,12 +183,15 @@ pub fn App() -> Element {
             status,
             error,
             restart_confirmation_open,
+            help_open,
             on_select_card: move |card_id| game.write().select_card(card_id),
             on_cancel_selection: move |_| game.write().cancel_selection(),
             on_play_card: move |position| game.write().play_selected_card(position),
             on_request_restart: move |_| game.write().request_restart(),
             on_cancel_restart: move |_| game.write().cancel_restart(),
             on_confirm_restart: move |_| game.write().confirm_restart(),
+            on_show_help: move |_| game.write().show_help(),
+            on_hide_help: move |_| game.write().hide_help(),
             on_key_down: move |event: KeyboardEvent| {
                 if event.key() == Key::Escape {
                     game.write().handle_escape();
@@ -291,6 +307,18 @@ mod tests {
 
         game.handle_escape();
         assert_eq!(game.selected_card_id, None);
+    }
+
+    #[test]
+    fn escape_closes_help_without_changing_the_match() {
+        let mut game = WebGame::new();
+        let snapshot = game.snapshot.clone();
+        game.show_help();
+
+        game.handle_escape();
+
+        assert!(!game.help_open);
+        assert_eq!(game.snapshot, snapshot);
     }
 
     #[test]

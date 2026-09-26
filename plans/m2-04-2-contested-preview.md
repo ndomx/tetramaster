@@ -3,7 +3,8 @@
 ## Objective
 
 Preview which opposing cards would be contested when the player targets a legal
-board cell, without duplicating game rules in the web adapter.
+board cell, without duplicating game rules in the web adapter, and expose the
+resolved attack and defense power when combat begins.
 
 ## Prerequisites
 
@@ -19,11 +20,15 @@ board cell, without duplicating game rules in the web adapter.
 - Support both pointer hover and keyboard focus.
 - Add deterministic tests proving the preview agrees with placement interaction
   discovery and never mutates the session.
+- Extend the combat event contract with the already-calculated attack and defense
+  power used for that resolution, including the applied random calculation.
+- Show those resolved powers on the two combatants once combat begins. This is
+  historical event presentation, not a pre-combat prediction.
 
 ## Non-goals
 
-- No predicted combat winner, random-roll preview, mutation, or final animation
-  choreography.
+- No predicted combat winner, pre-combat random-roll preview, mutation, or final
+  animation choreography.
 
 ## Acceptance Criteria
 
@@ -31,3 +36,5 @@ board cell, without duplicating game rules in the web adapter.
   or arrow-adjacency rules.
 - Pointer and keyboard users receive the same preview.
 - Preview queries leave the session and random state unchanged.
+- Combat power values shown by the frontend exactly match the values used by the
+  engine to resolve that combat.

@@ -164,6 +164,13 @@ force until the human explicitly changes them.
   is a separately reviewed M2.04.1 stage.
 - Contested-card preview is a separately reviewed M2.04.2 stage. It must use a
   frontend-neutral interaction query rather than duplicating rules in web UI.
+- M2.04.2 also exposes the already-resolved attack and defense power through the
+  combat event so both combatants can display the exact values used by the engine.
+  It does not preview randomness before combat begins.
+- The M2.04 board omits coordinate labels and renders empty cells transparently.
+  The opponent hand is visible only as a count of secret card backs. Instructions
+  live behind a `?` help dialog, card art fills the card face, displayed stats use
+  the TUI's high-nibble format, and directional arrows use yellow triangles.
 
 Candidate event families are game start, turn start, card placement, combat
 resolution, ownership change, turn end, and game finish. Exact variant payloads

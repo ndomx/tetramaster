@@ -34,12 +34,15 @@ pub(super) fn GameApp(
     status: String,
     error: Option<String>,
     restart_confirmation_open: bool,
+    help_open: bool,
     on_select_card: EventHandler<u64>,
     on_cancel_selection: EventHandler<MouseEvent>,
     on_play_card: EventHandler<Position>,
     on_request_restart: EventHandler<MouseEvent>,
     on_cancel_restart: EventHandler<MouseEvent>,
     on_confirm_restart: EventHandler<MouseEvent>,
+    on_show_help: EventHandler<MouseEvent>,
+    on_hide_help: EventHandler<MouseEvent>,
     on_key_down: EventHandler<KeyboardEvent>,
 ) -> Element {
     rsx! {
@@ -54,40 +57,37 @@ pub(super) fn GameApp(
                         p { class: "text-xs font-semibold uppercase tracking-[0.32em] text-amber-200/70", "Card battle" }
                         h1 { class: "font-serif text-3xl font-black tracking-wide text-amber-100 drop-shadow", "Tetra Master" }
                     }
-                    button {
-                        r#type: "button",
-                        class: "rounded-md border border-amber-200/50 bg-slate-950/50 px-4 py-2 text-sm font-bold text-amber-100 transition hover:border-amber-100 hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-200",
-                        onclick: move |event| on_request_restart.call(event),
-                        "New game"
+                    div {
+                        class: "flex items-center gap-2",
+                        button {
+                            r#type: "button",
+                            aria_label: "How to play",
+                            title: "How to play",
+                            class: "flex h-10 w-10 items-center justify-center rounded-full border border-amber-200/50 bg-slate-950/50 text-lg font-black text-amber-100 transition hover:border-amber-100 hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-200",
+                            onclick: move |event| on_show_help.call(event),
+                            "?"
+                        }
+                        button {
+                            r#type: "button",
+                            class: "rounded-md border border-amber-200/50 bg-slate-950/50 px-4 py-2 text-sm font-bold text-amber-100 transition hover:border-amber-100 hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-200",
+                            onclick: move |event| on_request_restart.call(event),
+                            "New game"
+                        }
                     }
                 }
+
+                OpponentHand { count: snapshot.cpu_hand_count }
 
                 div {
                     class: "grid flex-1 grid-cols-[minmax(180px,0.7fr)_minmax(380px,1.4fr)_minmax(180px,0.7fr)] items-center gap-5 py-3",
                     aside {
                         class: "flex h-full min-h-0 flex-col justify-center gap-4",
                         Score { snapshot: snapshot.clone() }
-                        GameStatus { interaction, status, error }
                     }
                     Board { snapshot: snapshot.clone(), selected_card_id, on_play_card }
                     aside {
                         class: "flex h-full flex-col justify-center gap-4",
-                        div {
-                            class: "rounded-xl border border-white/10 bg-slate-950/45 p-4 shadow-xl backdrop-blur-sm",
-                            h2 { class: "font-serif text-lg font-bold text-amber-100", "How to play" }
-                            ol {
-                                class: "mt-3 space-y-3 text-sm leading-relaxed text-slate-300",
-                                li { class: "flex gap-3", span { class: "font-bold text-amber-300", "1" } "Choose a card from your hand." }
-                                li { class: "flex gap-3", span { class: "font-bold text-amber-300", "2" } "Play it on a marked open cell." }
-                                li { class: "flex gap-3", span { class: "font-bold text-amber-300", "3" } "Arrows determine neighboring interactions." }
-                            }
-                        }
-                        div {
-                            class: "rounded-xl border border-white/10 bg-slate-950/45 p-4 text-xs text-slate-400",
-                            p { class: "font-bold uppercase tracking-widest text-slate-300", "Card stats" }
-                            p { class: "mt-2", "Attack · Class · Physical defense · Magic defense" }
-                            p { class: "mt-2", "P Physical · M Magic · X Flexible · A Assault" }
-                        }
+                        GameStatus { interaction, status, error }
                     }
                 }
 
@@ -109,6 +109,8 @@ pub(super) fn GameApp(
                 }
             } else if restart_confirmation_open {
                 RestartDialog { on_cancel: on_cancel_restart, on_confirm: on_confirm_restart }
+            } else if help_open {
+                HelpDialog { on_close: on_hide_help }
             }
         }
     }
@@ -126,7 +128,26 @@ fn Score(snapshot: GameSnapshot) -> Element {
                 div { class: "p-4 text-center", p { class: "text-xs font-bold uppercase tracking-wider text-blue-300", "◆ Player" } p { class: "mt-1 font-serif text-4xl font-black text-blue-100", "{snapshot.human_score}" } }
                 div { class: "p-4 text-center", p { class: "text-xs font-bold uppercase tracking-wider text-rose-300", "CPU ▲" } p { class: "mt-1 font-serif text-4xl font-black text-rose-100", "{snapshot.cpu_score}" } }
             }
-            p { class: "border-t border-white/10 px-4 py-2 text-center text-xs text-slate-400", "CPU hand: {snapshot.cpu_hand_count} cards" }
+        }
+    }
+}
+
+#[component]
+fn OpponentHand(count: usize) -> Element {
+    rsx! {
+        section {
+            aria_label: "Opponent hand: {count} hidden cards",
+            class: "flex min-h-16 items-center justify-center gap-2 py-2",
+            for index in 0..count {
+                div {
+                    key: "{index}",
+                    role: "img",
+                    aria_label: "Hidden opponent card {index + 1}",
+                    class: "relative h-14 w-12 overflow-hidden rounded border-2 border-rose-300 bg-rose-950 shadow-lg",
+                    img { src: CARD_ARTWORK, alt: "", class: "absolute inset-0 h-full w-full object-cover opacity-75" }
+                    span { class: "absolute inset-0 flex items-center justify-center bg-rose-950/30 text-xs font-black text-white", "▲" }
+                }
+            }
         }
     }
 }
@@ -159,7 +180,7 @@ fn Board(
     rsx! {
         section {
             aria_label: "Game board",
-            class: "mx-auto w-[min(48vw,47vh)] min-w-[360px] max-w-[520px] rounded-2xl border border-amber-200/30 bg-[linear-gradient(135deg,rgba(120,53,15,0.3),rgba(15,23,42,0.92))] p-3 shadow-2xl shadow-black/50",
+            class: "mx-auto w-[min(48vw,40vh)] min-w-[320px] max-w-[520px] rounded-2xl border border-amber-200/30 bg-[linear-gradient(135deg,rgba(120,53,15,0.3),rgba(15,23,42,0.92))] p-3 shadow-2xl shadow-black/50",
             div {
                 class: "grid grid-cols-4 gap-2",
                 for (index, tile) in snapshot.board.iter().enumerate() {
@@ -186,9 +207,9 @@ fn BoardCell(
     match tile {
         BoardTileSnapshot::Empty => {
             let class = if is_legal {
-                "group relative aspect-[84/102] overflow-hidden rounded-lg border-2 border-dashed border-emerald-300 bg-emerald-950/50 p-2 text-emerald-100 transition hover:border-emerald-100 hover:bg-emerald-900/70 focus:outline-none focus:ring-4 focus:ring-emerald-200/70"
+                "relative aspect-[84/102] rounded-lg border-2 border-dashed border-emerald-300 bg-transparent transition hover:border-emerald-100 focus:outline-none focus:ring-4 focus:ring-emerald-200/70"
             } else {
-                "relative aspect-[84/102] overflow-hidden rounded-lg border border-slate-600/60 bg-slate-950/45 p-2 text-slate-500"
+                "relative aspect-[84/102] rounded-lg border border-transparent bg-transparent"
             };
             let label = if is_legal {
                 "Available — play card"
@@ -200,8 +221,6 @@ fn BoardCell(
                     r#type: "button", class, disabled: !is_legal,
                     aria_label: "Row {row}, column {column}: {label}",
                     onclick: move |_| on_play_card.call(position),
-                    span { class: "absolute left-2 top-2 font-mono text-[10px] opacity-70", "{row}·{column}" }
-                    span { class: "flex h-full items-center justify-center text-center text-xs font-bold uppercase tracking-wider", if is_legal { "+ Play" } else { "Empty" } }
                 }
             }
         }
@@ -209,9 +228,7 @@ fn BoardCell(
             div {
                 role: "img", aria_label: "Row {row}, column {column}: Blocked",
                 class: "relative aspect-[84/102] overflow-hidden rounded-lg border border-amber-700/70 bg-[repeating-linear-gradient(135deg,rgba(120,53,15,0.45)_0,rgba(120,53,15,0.45)_8px,rgba(30,41,59,0.65)_8px,rgba(30,41,59,0.65)_16px)] p-2 text-amber-200",
-                span { class: "absolute left-2 top-2 font-mono text-[10px] opacity-70", "{row}·{column}" }
                 span { class: "flex h-full items-center justify-center text-2xl", "╳" }
-                span { class: "absolute inset-x-0 bottom-3 text-center text-[10px] font-bold uppercase tracking-widest", "Blocked" }
             }
         },
         BoardTileSnapshot::Occupied { controller, card } => {
@@ -254,7 +271,7 @@ fn Hand(
                         rsx! {
                             button {
                                 key: "{card_id}", r#type: "button",
-                                class: "min-w-0 rounded-xl focus:outline-none focus:ring-4 focus:ring-amber-200/80 disabled:cursor-not-allowed disabled:opacity-50",
+                                class: "aspect-[84/102] min-w-0 rounded-xl focus:outline-none focus:ring-4 focus:ring-amber-200/80 disabled:cursor-not-allowed disabled:opacity-50",
                                 disabled: interaction != InteractionState::AwaitingPlayerAction,
                                 aria_pressed: selected,
                                 aria_label: accessible_name,
@@ -275,70 +292,110 @@ fn CardView(card: CardSnapshot, size: CardSize, owner: CardOwner, selected: bool
         CardOwner::Human => "border-blue-300 bg-gradient-to-b from-blue-700 to-blue-950",
         CardOwner::Cpu => "border-rose-300 bg-gradient-to-b from-rose-700 to-rose-950",
     };
-    let owner_label = match owner {
-        CardOwner::Human => "◆ Player",
-        CardOwner::Cpu => "CPU ▲",
+    let (owner_label, owner_symbol, owner_badge_class) = match owner {
+        CardOwner::Human => ("Player", "◆", "bg-blue-950/85 text-blue-100"),
+        CardOwner::Cpu => ("CPU", "▲", "bg-rose-950/85 text-rose-100"),
     };
     let selected_class = if selected {
         "-translate-y-2 ring-4 ring-amber-200 shadow-amber-300/30"
     } else {
         "ring-1 ring-black/30"
     };
-    let padding = match size {
-        CardSize::Board => "p-1.5",
-        CardSize::Hand => "p-2",
-    };
-    let image_height = match size {
-        CardSize::Board => "h-[48%]",
-        CardSize::Hand => "h-16",
-    };
     let name_size = match size {
         CardSize::Board => "text-[10px]",
         CardSize::Hand => "text-xs",
     };
     let class = format!(
-        "relative h-full w-full overflow-hidden rounded-lg border-2 {owner_class} {selected_class} {padding} text-left shadow-lg transition"
+        "relative h-full w-full overflow-hidden rounded-lg border-2 {owner_class} {selected_class} text-left shadow-lg transition"
+    );
+    let stats = format_card_stats(&card);
+    let stats_label = format!(
+        "Attack {}, class {}, physical defense {}, magic defense {}",
+        card.stats.attack >> 4,
+        card.stats.battle_class,
+        card.stats.phys_defense >> 4,
+        card.stats.mag_defense >> 4
     );
     rsx! {
         article {
             class,
-            div {
-                class: "pointer-events-none absolute inset-0",
-                for arrow in arrow_markers(card.arrows) { span { class: "absolute z-10 flex h-4 w-4 items-center justify-center rounded-full bg-amber-100 text-[9px] font-black text-slate-950 shadow {arrow.class}", aria_hidden: "true", "{arrow.symbol}" } }
+            img { src: CARD_ARTWORK, alt: "", width: "84", height: "102", class: "absolute inset-0 h-full w-full object-cover" }
+            span {
+                class: "absolute left-1 top-1 z-10 rounded px-1 py-0.5 text-[8px] font-black uppercase tracking-wider {owner_badge_class}",
+                aria_label: "Controlled by {owner_label}",
+                "{owner_symbol}"
             }
             div {
-                class: "flex h-full flex-col",
-                img { src: CARD_ARTWORK, alt: "", width: "84", height: "102", class: "{image_height} w-full rounded object-cover opacity-90" }
-                h3 { class: "{name_size} mt-1 min-h-[2.35em] overflow-hidden text-center font-bold leading-tight text-white", title: "{card.name}", "{card.name}" }
-                div { class: "mt-auto rounded bg-black/55 px-1 py-0.5 text-center font-mono text-[11px] font-black tracking-wider text-amber-100", aria_label: "Attack {card.stats.attack:X}, class {card.stats.battle_class}, physical defense {card.stats.phys_defense:X}, magic defense {card.stats.mag_defense:X}", "{card.stats.attack:X}{card.stats.battle_class}{card.stats.phys_defense:X}{card.stats.mag_defense:X}" }
-                p { class: "mt-1 text-center text-[8px] font-black uppercase tracking-wider text-white/80", "{owner_label}" }
+                class: "pointer-events-none absolute inset-0 z-20",
+                for arrow in arrow_markers(card.arrows) { span { class: "absolute flex h-3 w-3 items-center justify-center text-[11px] font-black leading-none text-yellow-300 drop-shadow-[0_1px_1px_rgba(0,0,0,0.95)] {arrow.class}", aria_hidden: "true", "▲" } }
+            }
+            div {
+                class: "absolute inset-x-1 bottom-1 z-10 overflow-hidden rounded bg-black/70 text-center shadow",
+                h3 { class: "{name_size} truncate px-1 pt-0.5 font-bold leading-tight text-white", title: "{card.name}", "{card.name}" }
+                div { class: "px-1 py-0.5 font-mono text-[11px] font-black tracking-[0.16em] text-amber-100", aria_label: stats_label, "{stats}" }
             }
         }
     }
 }
 
 struct ArrowMarker {
-    symbol: &'static str,
     class: &'static str,
 }
 
 fn arrow_markers(mask: u8) -> Vec<ArrowMarker> {
-    const ARROWS: [(&str, &str); 8] = [
-        ("↑", "left-1/2 top-0 -translate-x-1/2 -translate-y-1/3"),
-        ("↗", "right-0 top-0 translate-x-1/3 -translate-y-1/3"),
-        ("→", "right-0 top-1/2 translate-x-1/3 -translate-y-1/2"),
-        ("↘", "bottom-0 right-0 translate-x-1/3 translate-y-1/3"),
-        ("↓", "bottom-0 left-1/2 -translate-x-1/2 translate-y-1/3"),
-        ("↙", "bottom-0 left-0 -translate-x-1/3 translate-y-1/3"),
-        ("←", "left-0 top-1/2 -translate-x-1/3 -translate-y-1/2"),
-        ("↖", "left-0 top-0 -translate-x-1/3 -translate-y-1/3"),
+    const ARROWS: [&str; 8] = [
+        "left-1/2 top-0 -translate-x-1/2",
+        "right-0 top-0 rotate-45",
+        "right-0 top-1/2 -translate-y-1/2 rotate-90",
+        "bottom-0 right-0 rotate-[135deg]",
+        "bottom-0 left-1/2 -translate-x-1/2 rotate-180",
+        "bottom-0 left-0 -rotate-[135deg]",
+        "left-0 top-1/2 -translate-y-1/2 -rotate-90",
+        "left-0 top-0 -rotate-45",
     ];
     ARROWS
         .iter()
         .enumerate()
         .filter(|(index, _)| mask & (1 << index) != 0)
-        .map(|(_, (symbol, class))| ArrowMarker { symbol, class })
+        .map(|(_, class)| ArrowMarker { class })
         .collect()
+}
+
+fn format_card_stats(card: &CardSnapshot) -> String {
+    format!(
+        "{:X}{}{:X}{:X}",
+        card.stats.attack >> 4,
+        card.stats.battle_class,
+        card.stats.phys_defense >> 4,
+        card.stats.mag_defense >> 4
+    )
+}
+
+#[component]
+fn HelpDialog(on_close: EventHandler<MouseEvent>) -> Element {
+    rsx! {
+        div { role: "dialog", aria_modal: "true", aria_labelledby: "help-title", class: "fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 p-6 backdrop-blur-sm",
+            div { class: "w-full max-w-lg rounded-2xl border border-amber-200/50 bg-slate-900 p-8 shadow-2xl shadow-black",
+                div { class: "flex items-start justify-between gap-4",
+                    div {
+                        p { class: "text-xs font-black uppercase tracking-[0.3em] text-amber-300", "Game guide" }
+                        h2 { id: "help-title", class: "mt-2 font-serif text-3xl font-black text-amber-100", "How to play" }
+                    }
+                    button { autofocus: true, r#type: "button", aria_label: "Close help", class: "flex h-9 w-9 items-center justify-center rounded-full border border-slate-500 text-xl font-bold text-slate-100 hover:border-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-200", onclick: move |event| on_close.call(event), "×" }
+                }
+                ol { class: "mt-6 space-y-3 text-sm leading-relaxed text-slate-200",
+                    li { class: "flex gap-3", span { class: "font-bold text-amber-300", "1" } "Choose a card from your hand." }
+                    li { class: "flex gap-3", span { class: "font-bold text-amber-300", "2" } "Play it on a marked open cell." }
+                    li { class: "flex gap-3", span { class: "font-bold text-amber-300", "3" } "Yellow triangles show the directions a card can interact." }
+                }
+                div { class: "mt-6 rounded-lg border border-white/10 bg-slate-950/60 p-4 text-sm text-slate-300",
+                    p { class: "font-bold uppercase tracking-widest text-amber-200", "Card stats" }
+                    p { class: "mt-2", "Attack · Class · Physical defense · Magic defense" }
+                    p { class: "mt-1 text-xs text-slate-400", "P Physical · M Magic · X Flexible · A Assault" }
+                }
+            }
+        }
+    }
 }
 
 #[component]
@@ -387,12 +444,21 @@ fn RestartDialog(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::{models::core::card::BattleClass, test_support::card};
 
     #[test]
     fn arrow_markers_follow_all_eight_mask_bits() {
         assert!(arrow_markers(0).is_empty());
-        assert_eq!(arrow_markers(0b0000_0001)[0].symbol, "↑");
-        assert_eq!(arrow_markers(0b1000_0000)[0].symbol, "↖");
+        assert!(arrow_markers(0b0000_0001)[0].class.contains("top-0"));
+        assert!(arrow_markers(0b1000_0000)[0].class.contains("-rotate-45"));
         assert_eq!(arrow_markers(u8::MAX).len(), 8);
+    }
+
+    #[test]
+    fn displayed_stats_match_the_tui_high_nibble_format() {
+        let card = card(1, 0, BattleClass::Flexible, 0xaf, 0x31, 0x09);
+        let snapshot = CardSnapshot::from(&card);
+
+        assert_eq!(format_card_stats(&snapshot), "AX30");
     }
 }
