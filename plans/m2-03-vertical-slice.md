@@ -39,3 +39,25 @@ full component system.
 
 Run the full native/web command matrix and manually verify a complete browser
 match at the desktop viewports agreed during kickoff.
+
+## Completion Notes
+
+- The Dioxus adapter owns the session and presentation state while interacting
+  with the engine only through `snapshot`, `interaction_state`, `dispatch`, and
+  `advance`.
+- The browser renders the score, CPU hand count, latest event, errors, human
+  hand, and 4x4 board. CPU card details remain hidden until cards are placed.
+- Selecting a hand card enables exactly the board cells represented by matching
+  snapshot legal actions. A pure adapter function and integration test cover the
+  selection-to-dispatch path.
+- Invalid selection coverage verifies that the adapter reports an error without
+  losing either its snapshot or the underlying session state.
+- Automatic one-transition advances complete CPU turns and effects without
+  frontend rule logic or artificial delays.
+- A browser playthrough completed a full match through five player click pairs,
+  with no console warnings or errors. Full-page inspection at the available
+  1280x720 browser surface is stricter vertically than the agreed 1280x800
+  viewport; the max-width-constrained layout uses the same breakpoint at
+  1440x900.
+- Formatting, 50 all-feature tests, all-target/all-feature Clippy with warnings
+  denied, web-only tests, WebAssembly Clippy, and the WebAssembly build pass.

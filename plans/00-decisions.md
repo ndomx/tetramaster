@@ -132,6 +132,25 @@ force until the human explicitly changes them.
 - WebAssembly enables the `getrandom` browser backend so the shared seeded RNG
   dependency compiles for `wasm32-unknown-unknown`.
 
+### M2.03 Playable Vertical Slice Decisions
+
+- The web adapter owns `GameSession`, the latest `GameSnapshot`, interaction
+  state, selected-card ID, status text, and error text. It does not inspect or
+  mutate private session state.
+- Browser matches use a fresh random seed. Deterministic adapter tests use a
+  recorded seed.
+- Selecting a visible human card and a legal board position produces a
+  `GameAction::PlayCard` only when that exact action appears in the snapshot's
+  legal actions.
+- Automatic transitions schedule one `advance` call per Dioxus task while the
+  interaction state is `Advancing`. The vertical slice adds no artificial delay
+  or animation timing.
+- The vertical slice uses deliberately minimal Tailwind styling: Blue and Red
+  identify board control, blocked cells are labeled, selected cards have a
+  visible outline, and legal cells are labeled `Play`.
+- Restart controls, artwork, final card presentation, reusable component
+  decomposition, and animation choreography remain deferred to M2.04 or M2.05.
+
 Candidate event families are game start, turn start, card placement, combat
 resolution, ownership change, turn end, and game finish. Exact variant payloads
 must be agreed with the human during M1.09 before implementation.
