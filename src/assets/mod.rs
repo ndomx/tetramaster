@@ -4,6 +4,8 @@ use serde::Deserialize;
 
 use crate::models::core::card::{BattleClass, CardArtwork, CardDefinition, CardStats};
 
+pub mod artwork;
+
 const CATALOG_FILE: &str = include_str!("./card_catalog.ron");
 const FALLBACK_PATH: &str = "assets/cards/fallback.png";
 const FALLBACK_IMAGE: &[u8] = include_bytes!("../../assets/cards/fallback.png");
@@ -120,7 +122,7 @@ fn validate_artwork_defaults(artwork: &ArtworkDefaults) -> Result<(), CatalogErr
     Ok(())
 }
 
-fn png_dimensions(bytes: &[u8]) -> Option<(u32, u32)> {
+pub(crate) fn png_dimensions(bytes: &[u8]) -> Option<(u32, u32)> {
     if bytes.len() < 24 || &bytes[..8] != b"\x89PNG\r\n\x1a\n" || &bytes[12..16] != b"IHDR" {
         return None;
     }

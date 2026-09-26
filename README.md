@@ -47,6 +47,11 @@ cargo check --target wasm32-unknown-unknown --no-default-features --features web
   use named expanded stats, typed battle classes, and external artwork references.
 - `assets/cards/fallback.png`: the original 84x102 image used when external card
   artwork is unavailable. Third-party card images are not stored in this repository.
+- `assets/cards/custom/`: optional Git-ignored developer artwork named
+  `Card001.png` through `Card100.png`. PNG dimensions may be any positive integer
+  multiple of 84x102; run
+  `cargo test --all-features supplied_custom_artwork_files_are_valid` to validate
+  a supplied pack.
 - `tailwind.css`: Tailwind input compiled by Dioxus into `assets/tailwind.css`.
 - `src/utils/`: constants, coordinate helpers, and seeded randomness.
 

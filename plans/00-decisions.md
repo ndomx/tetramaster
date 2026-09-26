@@ -160,6 +160,8 @@ force until the human explicitly changes them.
   restarted, while the game-over dialog provides an immediate play-again action.
 - Ownership, legal moves, blocked cells, selection, and disabled controls use
   labels, symbols, patterns, or borders in addition to color.
+- Card ownership uses blue/red framing plus screen-reader text; the earlier
+  northwest corner ownership symbol was removed after artwork made it redundant.
 - M2.04 uses the bundled fallback image for every card. Canonical artwork loading
   is a separately reviewed M2.04.1 stage.
 - Contested-card preview is a separately reviewed M2.04.2 stage. It must use a
@@ -171,6 +173,21 @@ force until the human explicitly changes them.
   The opponent hand is visible only as a count of secret card backs. Instructions
   live behind a `?` help dialog, card art fills the card face, displayed stats use
   the TUI's high-nibble format, and directional arrows use yellow triangles.
+
+### M2.04.1 Artwork Resolver Decisions
+
+- Canonical third-party artwork remains outside version control. Developers may
+  supply an optional local artwork pack under `assets/cards/custom/` using the
+  one-based names `Card001.png` through `Card100.png`.
+- Custom artwork must be PNG whose dimensions are a positive integer multiple of
+  84x102. The UI retains the logical 84:102 aspect ratio regardless of source
+  resolution.
+- The web adapter resolves `CardSnapshot::definition_index` to the corresponding
+  custom filename. A failed request switches that card to the bundled fallback
+  and does not retry the missing source during that component's lifetime.
+- Dioxus bundles the entire optional artwork directory so dynamically resolved
+  filenames work with hashed production asset paths. Custom PNGs are ignored by
+  Git, and developers are responsible for permission to use supplied artwork.
 
 Candidate event families are game start, turn start, card placement, combat
 resolution, ownership change, turn end, and game finish. Exact variant payloads

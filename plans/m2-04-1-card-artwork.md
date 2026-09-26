@@ -2,19 +2,19 @@
 
 ## Objective
 
-Replace the shared fallback image with each card's canonical artwork while
-retaining a reliable local fallback.
+Resolve optional developer-supplied artwork for each card while retaining a
+reliable bundled fallback.
 
 ## Prerequisites
 
 - M2.04 is complete.
-- The human has approved whether artwork is resolved remotely, vendored, or
-  generated from another authoritative source.
+- The human has approved an optional, Git-ignored local artwork pack.
 
 ## Scope
 
-- Resolve the catalog's canonical Fandom page references to browser-loadable
-  artwork using the approved strategy.
+- Resolve `Card001.png` through `Card100.png` from `assets/cards/custom/` using
+  each snapshot's canonical definition index.
+- Accept PNG source dimensions that are positive integer multiples of 84x102.
 - Keep the existing 84x102 dimensions and local fallback behavior.
 - Prevent missing or delayed artwork from shifting the card layout.
 - Verify all 100 catalog entries rather than relying on random dealt hands.
@@ -25,6 +25,7 @@ retaining a reliable local fallback.
 
 ## Acceptance Criteria
 
-- Every catalog card resolves to its intended artwork or the local fallback.
+- Every catalog card resolves to its developer-supplied artwork or the local
+  fallback.
 - Failed artwork requests do not produce blank cards or layout shifts.
 - Automated checks cover URL resolution and fallback behavior.
