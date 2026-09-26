@@ -51,6 +51,8 @@ current equivalent.
 - `cargo fmt --check`, `cargo test --all-features`, all-target/all-feature
   Clippy with warnings denied, and the explicit WebAssembly check pass.
 - The WebAssembly dependency graph contains no Crossterm package.
+- CI reports formatting, TUI tests/lint, and web tests/Wasm lint as separate jobs
+  so frontend-specific failures retain clear ownership.
 - `dx serve --web --bin tetramaster-web` built and served the shell at
   `http://127.0.0.1:8080`; a browser rendered the title, shell text, and generated
   Tailwind styling.
