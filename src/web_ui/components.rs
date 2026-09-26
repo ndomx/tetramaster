@@ -292,9 +292,14 @@ fn CardView(card: CardSnapshot, size: CardSize, owner: CardOwner, selected: bool
         CardOwner::Human => "border-blue-300 bg-gradient-to-b from-blue-700 to-blue-950",
         CardOwner::Cpu => "border-rose-300 bg-gradient-to-b from-rose-700 to-rose-950",
     };
-    let (owner_label, owner_symbol, owner_badge_class) = match owner {
-        CardOwner::Human => ("Player", "◆", "bg-blue-950/85 text-blue-100"),
-        CardOwner::Cpu => ("CPU", "▲", "bg-rose-950/85 text-rose-100"),
+    let (owner_label, owner_symbol, owner_badge_class, stats_mask_class) = match owner {
+        CardOwner::Human => (
+            "Player",
+            "◆",
+            "bg-blue-950/85 text-blue-100",
+            "bg-blue-950/80",
+        ),
+        CardOwner::Cpu => ("CPU", "▲", "bg-rose-950/85 text-rose-100", "bg-rose-950/80"),
     };
     let selected_class = if selected {
         "-translate-y-2 ring-4 ring-amber-200 shadow-amber-300/30"
@@ -321,7 +326,7 @@ fn CardView(card: CardSnapshot, size: CardSize, owner: CardOwner, selected: bool
             class,
             img { src: CARD_ARTWORK, alt: "", width: "84", height: "102", class: "absolute inset-0 h-full w-full object-cover" }
             span {
-                class: "absolute left-1 top-1 z-10 rounded px-1 py-0.5 text-[8px] font-black uppercase tracking-wider {owner_badge_class}",
+                class: "absolute left-3 top-3 z-10 rounded px-1 py-0.5 text-[8px] font-black uppercase tracking-wider {owner_badge_class}",
                 aria_label: "Controlled by {owner_label}",
                 "{owner_symbol}"
             }
@@ -330,7 +335,7 @@ fn CardView(card: CardSnapshot, size: CardSize, owner: CardOwner, selected: bool
                 for arrow in arrow_markers(card.arrows) { span { class: "absolute flex h-3 w-3 items-center justify-center text-[11px] font-black leading-none text-yellow-300 drop-shadow-[0_1px_1px_rgba(0,0,0,0.95)] {arrow.class}", aria_hidden: "true", "▲" } }
             }
             div {
-                class: "absolute inset-x-1 bottom-1 z-10 overflow-hidden rounded bg-black/70 text-center shadow",
+                class: "absolute inset-x-1 bottom-1 z-10 overflow-hidden rounded text-center shadow backdrop-blur-[1px] {stats_mask_class}",
                 h3 { class: "{name_size} truncate px-1 pt-0.5 font-bold leading-tight text-white", title: "{card.name}", "{card.name}" }
                 div { class: "px-1 py-0.5 font-mono text-[11px] font-black tracking-[0.16em] text-amber-100", aria_label: stats_label, "{stats}" }
             }
