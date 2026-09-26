@@ -1,6 +1,6 @@
 use std::{
+    fmt::{Display, Formatter},
     io::{self, Stdout, Write},
-    str::FromStr,
 };
 
 use crossterm::{
@@ -13,8 +13,8 @@ use crate::{
     models::{
         core::{board::BoardSide, geometry::Position},
         session::{
-            CardSnapshot, CombatResult, ControlChangeReason, GameAction, GameError, GameEvent,
-            GameResult, GameSnapshot, PlayerSide,
+            BoardTileSnapshot, CardSnapshot, CombatResult, ControlChangeReason, GameAction,
+            GameError, GameEvent, GameResult, GameSnapshot, PlayerSide,
         },
     },
     ui::ascii::{
@@ -48,22 +48,29 @@ impl Terminal {
 
     pub fn read_action(&mut self, snapshot: &GameSnapshot) -> io::Result<GameAction> {
         loop {
-            self.prompt("select a card to play: ")?;
-            let index: usize = self.parse_input(|&value| value < snapshot.human_hand.len())?;
-            let card = &snapshot.human_hand[index];
+            self.prompt("Play <card> <row> <column> (example: 2 3 4): ")?;
+            let input = self.read_input()?;
+            let command = match parse_player_command(&input, snapshot.human_hand.len()) {
+                Ok(command) => command,
+                Err(error) => {
+                    writeln!(self.stdout, "{error}")?;
+                    continue;
+                }
+            };
 
-            self.prompt("select a row to play card: ")?;
-            let row: usize = self.parse_input(|&value| value < BOARD_SIZE)?;
-
-            self.prompt("select a col to play card: ")?;
-            let col: usize = self.parse_input(|&value| value < BOARD_SIZE)?;
-
-            let action = GameAction::new(card.id, Position::new(row, col));
+            let card = &snapshot.human_hand[command.card_index];
+            let position = Position::new(command.row, command.col);
+            let action = GameAction::new(card.id, position);
             if snapshot.legal_actions.contains(&action) {
                 return Ok(action);
             }
 
-            println!("that card cannot be played at that position");
+            let message = match snapshot.board.get(command.row * BOARD_SIZE + command.col) {
+                Some(BoardTileSnapshot::Blocked) => "That board position is blocked.",
+                Some(BoardTileSnapshot::Occupied { .. }) => "That board position is occupied.",
+                _ => "That card cannot be played at that position.",
+            };
+            writeln!(self.stdout, "{message}")?;
         }
     }
 
@@ -95,6 +102,15 @@ impl Terminal {
             println!();
         }
 
+        for (index, view) in views.iter().enumerate() {
+            print!(
+                "{:^width$} ",
+                format!("Card {}", index + 1),
+                width = view.width()
+            );
+        }
+        println!();
+
         Ok(())
     }
 
@@ -116,18 +132,68 @@ impl Terminal {
 
         Ok(input.trim().to_string())
     }
+}
 
-    fn parse_input<T: FromStr>(&self, validator: impl Fn(&T) -> bool) -> io::Result<T> {
-        loop {
-            let input = self.read_input()?;
-            let Some(parsed) = input.parse::<T>().ok().filter(|value| validator(value)) else {
-                println!("invalid choice!");
-                continue;
-            };
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct PlayerCommand {
+    card_index: usize,
+    row: usize,
+    col: usize,
+}
 
-            break Ok(parsed);
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum PlayerInputError {
+    ExpectedThreeNumbers,
+    CardOutOfRange { hand_len: usize },
+    RowOutOfRange,
+    ColumnOutOfRange,
+}
+
+impl Display for PlayerInputError {
+    fn fmt(&self, formatter: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::ExpectedThreeNumbers => formatter.write_str(
+                "Enter exactly three numbers: card, row, and column (for example: 2 3 4).",
+            ),
+            Self::CardOutOfRange { hand_len } => {
+                write!(formatter, "Choose a card from 1 to {hand_len}.")
+            }
+            Self::RowOutOfRange => {
+                write!(formatter, "Choose a row from 1 to {BOARD_SIZE}.")
+            }
+            Self::ColumnOutOfRange => {
+                write!(formatter, "Choose a column from 1 to {BOARD_SIZE}.")
+            }
         }
     }
+}
+
+fn parse_player_command(input: &str, hand_len: usize) -> Result<PlayerCommand, PlayerInputError> {
+    let values = input
+        .split_whitespace()
+        .map(str::parse::<usize>)
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|_| PlayerInputError::ExpectedThreeNumbers)?;
+
+    let [card, row, col] = values.as_slice() else {
+        return Err(PlayerInputError::ExpectedThreeNumbers);
+    };
+
+    if !(1..=hand_len).contains(card) {
+        return Err(PlayerInputError::CardOutOfRange { hand_len });
+    }
+    if !(1..=BOARD_SIZE).contains(row) {
+        return Err(PlayerInputError::RowOutOfRange);
+    }
+    if !(1..=BOARD_SIZE).contains(col) {
+        return Err(PlayerInputError::ColumnOutOfRange);
+    }
+
+    Ok(PlayerCommand {
+        card_index: card - 1,
+        row: row - 1,
+        col: col - 1,
+    })
 }
 
 fn side_name(side: PlayerSide) -> &'static str {
@@ -200,6 +266,62 @@ fn event_message(event: &GameEvent) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn player_command_uses_one_based_card_and_board_coordinates() {
+        assert_eq!(
+            parse_player_command("2 3 4", 5),
+            Ok(PlayerCommand {
+                card_index: 1,
+                row: 2,
+                col: 3,
+            })
+        );
+    }
+
+    #[test]
+    fn player_command_accepts_flexible_whitespace() {
+        assert_eq!(
+            parse_player_command("  1\t4  2  ", 3),
+            Ok(PlayerCommand {
+                card_index: 0,
+                row: 3,
+                col: 1,
+            })
+        );
+    }
+
+    #[test]
+    fn player_command_reports_specific_range_errors() {
+        assert_eq!(
+            parse_player_command("4 1 1", 3),
+            Err(PlayerInputError::CardOutOfRange { hand_len: 3 })
+        );
+        assert_eq!(
+            parse_player_command("1 0 1", 3),
+            Err(PlayerInputError::RowOutOfRange)
+        );
+        assert_eq!(
+            parse_player_command("1 1 5", 3),
+            Err(PlayerInputError::ColumnOutOfRange)
+        );
+    }
+
+    #[test]
+    fn player_command_rejects_malformed_input() {
+        assert_eq!(
+            parse_player_command("1 two 3", 5),
+            Err(PlayerInputError::ExpectedThreeNumbers)
+        );
+        assert_eq!(
+            parse_player_command("1 2", 5),
+            Err(PlayerInputError::ExpectedThreeNumbers)
+        );
+        assert_eq!(
+            parse_player_command("1 2 3 4", 5),
+            Err(PlayerInputError::ExpectedThreeNumbers)
+        );
+    }
 
     #[test]
     fn event_messages_cover_player_visible_contract_events() {
