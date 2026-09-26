@@ -5,8 +5,10 @@
 This is a Rust terminal implementation of Final Fantasy IX Tetra Master.
 
 - `src/lib.rs` owns the shared crate module declarations.
-- `src/main.rs` owns the executable loop and terminal orchestration, importing
-  shared code through the library crate.
+- `src/bin/tui.rs` owns the executable loop and terminal orchestration, importing
+  shared code through the library crate. It requires the native `tui` feature.
+- `src/bin/web.rs` launches the client-rendered browser adapter. Dioxus components
+  live under `src/web_ui/` and require the `web` feature.
 - `src/models/core/` contains the essential game model, grouped into `board`,
   `card`, and `geometry`, plus the player model. Core models own only their local
   invariants and must not depend on session, rules, AI, or UI code.
@@ -16,6 +18,8 @@ This is a Rust terminal implementation of Final Fantasy IX Tetra Master.
 - `src/rules/` contains frontend-neutral placement, combat, capture, and combo
   rule logic.
 - `src/ui/` contains terminal and ASCII rendering.
+- `tailwind.css` is the Tailwind input; `dx` compiles it to
+  `assets/tailwind.css` for the browser adapter.
 - `src/assets/card_catalog.ron` is the canonical embedded card catalog;
   `src/assets/` owns its parsing and validation into card definitions. Catalog
   order is the zero-based runtime index. Artwork metadata links to the external
@@ -32,10 +36,12 @@ rule logic into focused modules before growing `GameSession`.
 
 ## Commands
 
-- Build: `cargo build`
-- Run: `cargo run`
-- Test: `cargo test`
-- Lint: `cargo clippy --all-targets -- -D warnings`
+- Build TUI: `cargo build --bin tetramaster-tui --features tui`
+- Run TUI: `cargo run --bin tetramaster-tui --features tui`
+- Serve web: `dx serve --web --bin tetramaster-web`
+- Check web: `cargo check --target wasm32-unknown-unknown --no-default-features --features web --bin tetramaster-web`
+- Test: `cargo test --all-features`
+- Lint: `cargo clippy --all-targets --all-features -- -D warnings`
 - Format: `cargo fmt`
 
 Run `cargo fmt` before finalizing Rust edits. Run `cargo test` and Clippy for behavior or module changes.
@@ -67,11 +73,16 @@ If the plan conflicts with the repository or a newer human instruction, stop and
 ask which source should govern the step. Decisions recorded under established
 decisions remain authoritative until the human explicitly changes them.
 
-During Milestone 1, do not edit `Cargo.toml`, change dependencies, add Dioxus, or
-introduce web-specific types. Keep the embedded CSV as the interim read-only
-catalog and keep `src/main.rs` as the TUI entry point. The TUI must become the
-first adapter for the same frontend-neutral contract that the later Dioxus app
-will consume.
+The project remains one Cargo package with a shared library and separate TUI and
+web binaries. Crossterm must stay native-only and Dioxus types must stay inside
+the web adapter. Do not add Fullstack, SSR, backend, router, desktop, or mobile
+features unless a later approved plan step requires them.
+
+Use Dioxus 0.7 APIs. Components use owned props and `Element`, local reactive
+state uses `use_signal`, and static assets use `asset!`. Do not use removed APIs
+such as `Scope`, `cx`, or `use_state`. Do not hold Dioxus signal read or write
+guards across an `await` point; `clippy.toml` treats those guard types as invalid
+across awaits.
 
 Do not begin structural refactoring until M1.01's comprehensive characterization
 suite is complete and passing. Later steps must preserve those tests; changing a
