@@ -52,6 +52,7 @@ pub struct CardSnapshot {
     pub id: u64,
     pub definition_index: usize,
     pub name: String,
+    pub artwork_filename: String,
     pub arrows: u8,
     pub stats: CardStats,
 }
@@ -62,6 +63,7 @@ impl From<&Card> for CardSnapshot {
             id: card.id,
             definition_index: card.definition.index,
             name: card.definition.name.clone(),
+            artwork_filename: card.definition.artwork.filename.clone(),
             arrows: card.arrows,
             stats: card.stats.clone(),
         }

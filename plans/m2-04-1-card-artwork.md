@@ -12,8 +12,8 @@ reliable bundled fallback.
 
 ## Scope
 
-- Resolve `Card001.png` through `Card100.png` from `assets/cards/custom/` using
-  each snapshot's canonical definition index.
+- Resolve each catalog entry's explicit snake_case artwork filename from the
+  stable `/cards` URL prefix.
 - Accept PNG source dimensions that are positive integer multiples of 84x102.
 - Keep the existing 84x102 dimensions and local fallback behavior.
 - Prevent missing or delayed artwork from shifting the card layout.

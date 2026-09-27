@@ -12,7 +12,7 @@
         battle_class: Physical,
         physical_defense: 15,
         magical_defense: 15,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card001.png",
+        artwork_filename: "goblin.png",
     ),
     (
         name: "Fang",
@@ -20,7 +20,7 @@
         battle_class: Physical,
         physical_defense: 15,
         magical_defense: 15,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card002.png",
+        artwork_filename: "fang.png",
     ),
     (
         name: "Skeleton",
@@ -28,7 +28,7 @@
         battle_class: Physical,
         physical_defense: 15,
         magical_defense: 15,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card003.png",
+        artwork_filename: "skeleton.png",
     ),
     (
         name: "Flan",
@@ -36,7 +36,7 @@
         battle_class: Magic,
         physical_defense: 15,
         magical_defense: 31,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card004.png",
+        artwork_filename: "flan.png",
     ),
     (
         name: "Zaghnol",
@@ -44,7 +44,7 @@
         battle_class: Physical,
         physical_defense: 15,
         magical_defense: 15,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card005.png",
+        artwork_filename: "zaghnol.png",
     ),
     (
         name: "Lizard Man",
@@ -52,7 +52,7 @@
         battle_class: Physical,
         physical_defense: 15,
         magical_defense: 15,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card006.png",
+        artwork_filename: "lizard_man.png",
     ),
     (
         name: "Zombie",
@@ -60,7 +60,7 @@
         battle_class: Magic,
         physical_defense: 31,
         magical_defense: 15,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card007.png",
+        artwork_filename: "zombie.png",
     ),
     (
         name: "Bomb",
@@ -68,7 +68,7 @@
         battle_class: Magic,
         physical_defense: 15,
         magical_defense: 31,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card008.png",
+        artwork_filename: "bomb.png",
     ),
     (
         name: "Ironite",
@@ -76,7 +76,7 @@
         battle_class: Physical,
         physical_defense: 31,
         magical_defense: 15,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card009.png",
+        artwork_filename: "ironite.png",
     ),
     (
         name: "Sagahin",
@@ -84,7 +84,7 @@
         battle_class: Physical,
         physical_defense: 31,
         magical_defense: 15,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card010.png",
+        artwork_filename: "sagahin.png",
     ),
     (
         name: "Yeti",
@@ -92,7 +92,7 @@
         battle_class: Magic,
         physical_defense: 15,
         magical_defense: 31,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card011.png",
+        artwork_filename: "yeti.png",
     ),
     (
         name: "Mimic",
@@ -100,7 +100,7 @@
         battle_class: Magic,
         physical_defense: 31,
         magical_defense: 31,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card012.png",
+        artwork_filename: "mimic.png",
     ),
     (
         name: "Wyerd",
@@ -108,7 +108,7 @@
         battle_class: Magic,
         physical_defense: 15,
         magical_defense: 31,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card013.png",
+        artwork_filename: "wyerd.png",
     ),
     (
         name: "Mandragora",
@@ -116,7 +116,7 @@
         battle_class: Magic,
         physical_defense: 15,
         magical_defense: 47,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card014.png",
+        artwork_filename: "mandragora.png",
     ),
     (
         name: "Crawler",
@@ -124,7 +124,7 @@
         battle_class: Physical,
         physical_defense: 47,
         magical_defense: 15,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card015.png",
+        artwork_filename: "crawler.png",
     ),
     (
         name: "Sand Scorpion",
@@ -132,7 +132,7 @@
         battle_class: Physical,
         physical_defense: 47,
         magical_defense: 15,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card016.png",
+        artwork_filename: "sand_scorpion.png",
     ),
     (
         name: "Nymph",
@@ -140,7 +140,7 @@
         battle_class: Magic,
         physical_defense: 15,
         magical_defense: 47,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card017.png",
+        artwork_filename: "nymph.png",
     ),
     (
         name: "Sand Golem",
@@ -148,7 +148,7 @@
         battle_class: Physical,
         physical_defense: 47,
         magical_defense: 15,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card018.png",
+        artwork_filename: "sand_golem.png",
     ),
     (
         name: "Zuu",
@@ -156,7 +156,7 @@
         battle_class: Physical,
         physical_defense: 15,
         magical_defense: 47,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card019.png",
+        artwork_filename: "zuu.png",
     ),
     (
         name: "Dragonfly",
@@ -164,7 +164,7 @@
         battle_class: Physical,
         physical_defense: 47,
         magical_defense: 31,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card020.png",
+        artwork_filename: "dragonfly.png",
     ),
     (
         name: "Carrion Worm",
@@ -172,7 +172,7 @@
         battle_class: Magic,
         physical_defense: 31,
         magical_defense: 31,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card021.png",
+        artwork_filename: "carrion_worm.png",
     ),
     (
         name: "Cerberus",
@@ -180,7 +180,7 @@
         battle_class: Physical,
         physical_defense: 47,
         magical_defense: 15,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card022.png",
+        artwork_filename: "cerberus.png",
     ),
     (
         name: "Antlion",
@@ -188,7 +188,7 @@
         battle_class: Physical,
         physical_defense: 47,
         magical_defense: 31,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card023.png",
+        artwork_filename: "antlion.png",
     ),
     (
         name: "Cactuar",
@@ -196,7 +196,7 @@
         battle_class: Physical,
         physical_defense: 207,
         magical_defense: 15,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card024.png",
+        artwork_filename: "cactuar.png",
     ),
     (
         name: "Gimme Cat",
@@ -204,7 +204,7 @@
         battle_class: Magic,
         physical_defense: 31,
         magical_defense: 31,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card025.png",
+        artwork_filename: "gimme_cat.png",
     ),
     (
         name: "Ragtimer",
@@ -212,7 +212,7 @@
         battle_class: Magic,
         physical_defense: 47,
         magical_defense: 31,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card026.png",
+        artwork_filename: "ragtimer.png",
     ),
     (
         name: "Hedgehog Pie",
@@ -220,7 +220,7 @@
         battle_class: Magic,
         physical_defense: 31,
         magical_defense: 47,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card027.png",
+        artwork_filename: "hedgehog_pie.png",
     ),
     (
         name: "Ralvuimago",
@@ -228,7 +228,7 @@
         battle_class: Physical,
         physical_defense: 79,
         magical_defense: 15,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card028.png",
+        artwork_filename: "ralvuimago.png",
     ),
     (
         name: "Ochu",
@@ -236,7 +236,7 @@
         battle_class: Physical,
         physical_defense: 47,
         magical_defense: 31,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card029.png",
+        artwork_filename: "ochu.png",
     ),
     (
         name: "Troll",
@@ -244,7 +244,7 @@
         battle_class: Physical,
         physical_defense: 63,
         magical_defense: 47,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card030.png",
+        artwork_filename: "troll.png",
     ),
     (
         name: "Blazer Beetle",
@@ -252,7 +252,7 @@
         battle_class: Physical,
         physical_defense: 95,
         magical_defense: 31,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card031.png",
+        artwork_filename: "blazer_beetle.png",
     ),
     (
         name: "Abomination",
@@ -260,7 +260,7 @@
         battle_class: Physical,
         physical_defense: 63,
         magical_defense: 63,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card032.png",
+        artwork_filename: "abomination.png",
     ),
     (
         name: "Zemzelett",
@@ -268,7 +268,7 @@
         battle_class: Magic,
         physical_defense: 31,
         magical_defense: 95,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card033.png",
+        artwork_filename: "zemzelett.png",
     ),
     (
         name: "Stroper",
@@ -276,7 +276,7 @@
         battle_class: Physical,
         physical_defense: 63,
         magical_defense: 15,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card034.png",
+        artwork_filename: "stroper.png",
     ),
     (
         name: "Tantarian",
@@ -284,7 +284,7 @@
         battle_class: Magic,
         physical_defense: 47,
         magical_defense: 47,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card035.png",
+        artwork_filename: "tantarian.png",
     ),
     (
         name: "Grand Dragon",
@@ -292,7 +292,7 @@
         battle_class: Physical,
         physical_defense: 79,
         magical_defense: 79,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card036.png",
+        artwork_filename: "grand_dragon.png",
     ),
     (
         name: "Feather Circle",
@@ -300,7 +300,7 @@
         battle_class: Magic,
         physical_defense: 47,
         magical_defense: 47,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card037.png",
+        artwork_filename: "feather_circle.png",
     ),
     (
         name: "Hecteyes",
@@ -308,7 +308,7 @@
         battle_class: Magic,
         physical_defense: 15,
         magical_defense: 79,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card038.png",
+        artwork_filename: "hecteyes.png",
     ),
     (
         name: "Ogre",
@@ -316,7 +316,7 @@
         battle_class: Physical,
         physical_defense: 79,
         magical_defense: 31,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card039.png",
+        artwork_filename: "ogre.png",
     ),
     (
         name: "Armstrong",
@@ -324,7 +324,7 @@
         battle_class: Magic,
         physical_defense: 47,
         magical_defense: 79,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card040.png",
+        artwork_filename: "armstrong.png",
     ),
     (
         name: "Ash",
@@ -332,7 +332,7 @@
         battle_class: Magic,
         physical_defense: 63,
         magical_defense: 63,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card041.png",
+        artwork_filename: "ash.png",
     ),
     (
         name: "Wraith",
@@ -340,7 +340,7 @@
         battle_class: Magic,
         physical_defense: 79,
         magical_defense: 15,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card042.png",
+        artwork_filename: "wraith.png",
     ),
     (
         name: "Gargoyle",
@@ -348,7 +348,7 @@
         battle_class: Magic,
         physical_defense: 63,
         magical_defense: 47,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card043.png",
+        artwork_filename: "gargoyle.png",
     ),
     (
         name: "Vepal",
@@ -356,7 +356,7 @@
         battle_class: Magic,
         physical_defense: 63,
         magical_defense: 63,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card044.png",
+        artwork_filename: "vepal.png",
     ),
     (
         name: "Grimlock",
@@ -364,7 +364,7 @@
         battle_class: Magic,
         physical_defense: 47,
         magical_defense: 63,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card045.png",
+        artwork_filename: "grimlock.png",
     ),
     (
         name: "Tonberry",
@@ -372,7 +372,7 @@
         battle_class: Physical,
         physical_defense: 63,
         magical_defense: 63,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card046.png",
+        artwork_filename: "tonberry.png",
     ),
     (
         name: "Veteran",
@@ -380,7 +380,7 @@
         battle_class: Magic,
         physical_defense: 31,
         magical_defense: 159,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card047.png",
+        artwork_filename: "veteran.png",
     ),
     (
         name: "Garuda",
@@ -388,7 +388,7 @@
         battle_class: Magic,
         physical_defense: 79,
         magical_defense: 31,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card048.png",
+        artwork_filename: "garuda.png",
     ),
     (
         name: "Malboro",
@@ -396,7 +396,7 @@
         battle_class: Magic,
         physical_defense: 63,
         magical_defense: 111,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card049.png",
+        artwork_filename: "malboro.png",
     ),
     (
         name: "Mover",
@@ -404,7 +404,7 @@
         battle_class: Magic,
         physical_defense: 255,
         magical_defense: 15,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card050.png",
+        artwork_filename: "mover.png",
     ),
     (
         name: "Abadon",
@@ -412,7 +412,7 @@
         battle_class: Magic,
         physical_defense: 111,
         magical_defense: 47,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card051.png",
+        artwork_filename: "abadon.png",
     ),
     (
         name: "Behemoth",
@@ -420,7 +420,7 @@
         battle_class: Physical,
         physical_defense: 79,
         magical_defense: 111,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card052.png",
+        artwork_filename: "behemoth.png",
     ),
     (
         name: "Iron Man",
@@ -428,7 +428,7 @@
         battle_class: Physical,
         physical_defense: 111,
         magical_defense: 15,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card053.png",
+        artwork_filename: "iron_man.png",
     ),
     (
         name: "Nova Dragon",
@@ -436,7 +436,7 @@
         battle_class: Physical,
         physical_defense: 127,
         magical_defense: 207,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card054.png",
+        artwork_filename: "nova_dragon.png",
     ),
     (
         name: "Ozma",
@@ -444,7 +444,7 @@
         battle_class: Magic,
         physical_defense: 15,
         magical_defense: 207,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card055.png",
+        artwork_filename: "ozma.png",
     ),
     (
         name: "Hades",
@@ -452,7 +452,7 @@
         battle_class: Magic,
         physical_defense: 207,
         magical_defense: 31,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card056.png",
+        artwork_filename: "hades.png",
     ),
     (
         name: "Holy",
@@ -460,7 +460,7 @@
         battle_class: Magic,
         physical_defense: 47,
         magical_defense: 63,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card057.png",
+        artwork_filename: "holy.png",
     ),
     (
         name: "Meteor",
@@ -468,7 +468,7 @@
         battle_class: Magic,
         physical_defense: 175,
         magical_defense: 15,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card058.png",
+        artwork_filename: "meteor.png",
     ),
     (
         name: "Flare",
@@ -476,7 +476,7 @@
         battle_class: Magic,
         physical_defense: 15,
         magical_defense: 15,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card059.png",
+        artwork_filename: "flare.png",
     ),
     (
         name: "Shiva",
@@ -484,7 +484,7 @@
         battle_class: Magic,
         physical_defense: 15,
         magical_defense: 95,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card060.png",
+        artwork_filename: "shiva.png",
     ),
     (
         name: "Ifrit",
@@ -492,7 +492,7 @@
         battle_class: Magic,
         physical_defense: 159,
         magical_defense: 15,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card061.png",
+        artwork_filename: "ifrit.png",
     ),
     (
         name: "Ramuh",
@@ -500,7 +500,7 @@
         battle_class: Magic,
         physical_defense: 31,
         magical_defense: 111,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card062.png",
+        artwork_filename: "ramuh.png",
     ),
     (
         name: "Atomos",
@@ -508,7 +508,7 @@
         battle_class: Magic,
         physical_defense: 111,
         magical_defense: 111,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card063.png",
+        artwork_filename: "atomos.png",
     ),
     (
         name: "Odin",
@@ -516,7 +516,7 @@
         battle_class: Magic,
         physical_defense: 143,
         magical_defense: 79,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card064.png",
+        artwork_filename: "odin.png",
     ),
     (
         name: "Leviathan",
@@ -524,7 +524,7 @@
         battle_class: Magic,
         physical_defense: 111,
         magical_defense: 31,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card065.png",
+        artwork_filename: "leviathan.png",
     ),
     (
         name: "Bahamut",
@@ -532,7 +532,7 @@
         battle_class: Magic,
         physical_defense: 143,
         magical_defense: 95,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card066.png",
+        artwork_filename: "bahamut.png",
     ),
     (
         name: "Ark",
@@ -540,7 +540,7 @@
         battle_class: Magic,
         physical_defense: 95,
         magical_defense: 95,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card067.png",
+        artwork_filename: "ark.png",
     ),
     (
         name: "Fenrir",
@@ -548,7 +548,7 @@
         battle_class: Magic,
         physical_defense: 47,
         magical_defense: 31,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card068.png",
+        artwork_filename: "fenrir.png",
     ),
     (
         name: "Madeen",
@@ -556,7 +556,7 @@
         battle_class: Magic,
         physical_defense: 31,
         magical_defense: 111,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card069.png",
+        artwork_filename: "madeen.png",
     ),
     (
         name: "Alexander",
@@ -564,7 +564,7 @@
         battle_class: Magic,
         physical_defense: 191,
         magical_defense: 95,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card070.png",
+        artwork_filename: "alexander.png",
     ),
     (
         name: "Excalibur II",
@@ -572,7 +572,7 @@
         battle_class: Physical,
         physical_defense: 191,
         magical_defense: 15,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card071.png",
+        artwork_filename: "excalibur_ii.png",
     ),
     (
         name: "Ultima Weapon",
@@ -580,7 +580,7 @@
         battle_class: Physical,
         physical_defense: 31,
         magical_defense: 111,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card072.png",
+        artwork_filename: "ultima_weapon.png",
     ),
     (
         name: "Masamune",
@@ -588,7 +588,7 @@
         battle_class: Physical,
         physical_defense: 191,
         magical_defense: 63,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card073.png",
+        artwork_filename: "masamune.png",
     ),
     (
         name: "Elixir",
@@ -596,7 +596,7 @@
         battle_class: Magic,
         physical_defense: 111,
         magical_defense: 111,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card074.png",
+        artwork_filename: "elixir.png",
     ),
     (
         name: "Dark Matter",
@@ -604,7 +604,7 @@
         battle_class: Magic,
         physical_defense: 63,
         magical_defense: 207,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card075.png",
+        artwork_filename: "dark_matter.png",
     ),
     (
         name: "Ribbon",
@@ -612,7 +612,7 @@
         battle_class: Magic,
         physical_defense: 207,
         magical_defense: 255,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card076.png",
+        artwork_filename: "ribbon.png",
     ),
     (
         name: "Tiger Racket",
@@ -620,7 +620,7 @@
         battle_class: Physical,
         physical_defense: 15,
         magical_defense: 31,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card077.png",
+        artwork_filename: "tiger_racket.png",
     ),
     (
         name: "Save the Queen",
@@ -628,7 +628,7 @@
         battle_class: Physical,
         physical_defense: 63,
         magical_defense: 15,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card078.png",
+        artwork_filename: "save_the_queen.png",
     ),
     (
         name: "Genji",
@@ -636,7 +636,7 @@
         battle_class: Physical,
         physical_defense: 111,
         magical_defense: 175,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card079.png",
+        artwork_filename: "genji.png",
     ),
     (
         name: "Mythril Sword",
@@ -644,7 +644,7 @@
         battle_class: Physical,
         physical_defense: 15,
         magical_defense: 15,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card080.png",
+        artwork_filename: "mythril_sword.png",
     ),
     (
         name: "Blue Narciss",
@@ -652,7 +652,7 @@
         battle_class: Physical,
         physical_defense: 143,
         magical_defense: 31,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card081.png",
+        artwork_filename: "blue_narciss.png",
     ),
     (
         name: "Hilda Garde 3",
@@ -660,7 +660,7 @@
         battle_class: Physical,
         physical_defense: 63,
         magical_defense: 15,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card082.png",
+        artwork_filename: "hilda_garde_3.png",
     ),
     (
         name: "Invincible",
@@ -668,7 +668,7 @@
         battle_class: Physical,
         physical_defense: 143,
         magical_defense: 207,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card083.png",
+        artwork_filename: "invincible.png",
     ),
     (
         name: "Cargo Ship",
@@ -676,7 +676,7 @@
         battle_class: Physical,
         physical_defense: 111,
         magical_defense: 15,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card084.png",
+        artwork_filename: "cargo_ship.png",
     ),
     (
         name: "Hilda Garde 1",
@@ -684,7 +684,7 @@
         battle_class: Physical,
         physical_defense: 79,
         magical_defense: 15,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card085.png",
+        artwork_filename: "hilda_garde_1.png",
     ),
     (
         name: "Red Rose",
@@ -692,7 +692,7 @@
         battle_class: Physical,
         physical_defense: 31,
         magical_defense: 143,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card086.png",
+        artwork_filename: "red_rose.png",
     ),
     (
         name: "Theater Ship",
@@ -700,7 +700,7 @@
         battle_class: Physical,
         physical_defense: 111,
         magical_defense: 31,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card087.png",
+        artwork_filename: "theater_ship.png",
     ),
     (
         name: "Viltgance",
@@ -708,7 +708,7 @@
         battle_class: Physical,
         physical_defense: 143,
         magical_defense: 31,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card088.png",
+        artwork_filename: "viltgance.png",
     ),
     (
         name: "Chocobo",
@@ -716,7 +716,7 @@
         battle_class: Physical,
         physical_defense: 15,
         magical_defense: 15,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card089.png",
+        artwork_filename: "chocobo.png",
     ),
     (
         name: "Fat Chocobo",
@@ -724,7 +724,7 @@
         battle_class: Physical,
         physical_defense: 31,
         magical_defense: 31,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card090.png",
+        artwork_filename: "fat_chocobo.png",
     ),
     (
         name: "Mog",
@@ -732,7 +732,7 @@
         battle_class: Magic,
         physical_defense: 15,
         magical_defense: 15,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card091.png",
+        artwork_filename: "mog.png",
     ),
     (
         name: "Frog",
@@ -740,7 +740,7 @@
         battle_class: Physical,
         physical_defense: 15,
         magical_defense: 15,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card092.png",
+        artwork_filename: "frog.png",
     ),
     (
         name: "Oglop",
@@ -748,7 +748,7 @@
         battle_class: Physical,
         physical_defense: 31,
         magical_defense: 15,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card093.png",
+        artwork_filename: "oglop.png",
     ),
     (
         name: "Alexandria",
@@ -756,7 +756,7 @@
         battle_class: Physical,
         physical_defense: 191,
         magical_defense: 111,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card094.png",
+        artwork_filename: "alexandria.png",
     ),
     (
         name: "Lindblum",
@@ -764,7 +764,7 @@
         battle_class: Physical,
         physical_defense: 111,
         magical_defense: 191,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card095.png",
+        artwork_filename: "lindblum.png",
     ),
     (
         name: "Two Moons",
@@ -772,7 +772,7 @@
         battle_class: Magic,
         physical_defense: 95,
         magical_defense: 95,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card096.png",
+        artwork_filename: "two_moons.png",
     ),
     (
         name: "Gargant",
@@ -780,7 +780,7 @@
         battle_class: Physical,
         physical_defense: 15,
         magical_defense: 63,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card097.png",
+        artwork_filename: "gargant.png",
     ),
     (
         name: "Namingway",
@@ -788,7 +788,7 @@
         battle_class: Magic,
         physical_defense: 127,
         magical_defense: 127,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card098.png",
+        artwork_filename: "namingway.png",
     ),
     (
         name: "Boco",
@@ -796,7 +796,7 @@
         battle_class: Physical,
         physical_defense: 127,
         magical_defense: 127,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card099.png",
+        artwork_filename: "boco.png",
     ),
     (
         name: "Airship",
@@ -804,7 +804,7 @@
         battle_class: Physical,
         physical_defense: 127,
         magical_defense: 127,
-        artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card100.png",
+        artwork_filename: "airship.png",
     ),
     ],
 )

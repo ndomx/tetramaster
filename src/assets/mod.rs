@@ -30,7 +30,7 @@ struct CardRecord {
     battle_class: BattleClassRecord,
     physical_defense: u8,
     magical_defense: u8,
-    artwork: String,
+    artwork_filename: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -68,13 +68,13 @@ fn load_cards(source: &str) -> Result<Vec<CardDefinition>, CatalogError> {
     validate_artwork_defaults(&catalog.artwork)?;
 
     let mut names = HashSet::with_capacity(catalog.cards.len());
-    let mut artwork_urls = HashSet::with_capacity(catalog.cards.len());
+    let mut artwork_filenames = HashSet::with_capacity(catalog.cards.len());
     catalog
         .cards
         .into_iter()
         .enumerate()
         .map(|(index, record)| {
-            validate_record(index, &record, &mut names, &mut artwork_urls)?;
+            validate_record(index, &record, &mut names, &mut artwork_filenames)?;
             Ok(CardDefinition {
                 index,
                 name: record.name,
@@ -85,7 +85,7 @@ fn load_cards(source: &str) -> Result<Vec<CardDefinition>, CatalogError> {
                     mag_defense: record.magical_defense,
                 },
                 artwork: CardArtwork {
-                    source_url: record.artwork,
+                    filename: record.artwork_filename,
                     fallback_path: catalog.artwork.fallback_path.clone(),
                     width: catalog.artwork.width,
                     height: catalog.artwork.height,
@@ -135,7 +135,7 @@ fn validate_record(
     index: usize,
     record: &CardRecord,
     names: &mut HashSet<String>,
-    artwork_urls: &mut HashSet<String>,
+    artwork_filenames: &mut HashSet<String>,
 ) -> Result<(), CatalogError> {
     let entry = format!("catalog entry {} ({:?})", index + 1, record.name);
     if record.name.trim().is_empty() {
@@ -155,18 +155,14 @@ fn validate_record(
             )));
         }
     }
-    let expected_url = format!(
-        "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card{:03}.png",
-        index + 1
-    );
-    if record.artwork != expected_url {
+    if !artwork::is_valid_artwork_filename(&record.artwork_filename) {
         return Err(CatalogError(format!(
-            "{entry}: artwork URL must be {expected_url:?}, got {:?}",
-            record.artwork
+            "{entry}: artwork_filename must be a snake_case PNG filename, got {:?}",
+            record.artwork_filename
         )));
     }
-    if !artwork_urls.insert(record.artwork.clone()) {
-        return Err(CatalogError(format!("{entry}: duplicate artwork URL")));
+    if !artwork_filenames.insert(record.artwork_filename.clone()) {
+        return Err(CatalogError(format!("{entry}: duplicate artwork_filename")));
     }
     Ok(())
 }
@@ -190,11 +186,7 @@ mod tests {
             assert_eq!(card.artwork.width, 84);
             assert_eq!(card.artwork.height, 102);
             assert_eq!(card.artwork.fallback_path, "assets/cards/fallback.png");
-            assert!(
-                card.artwork
-                    .source_url
-                    .ends_with(&format!("Card{:03}.png", index + 1))
-            );
+            assert!(artwork::is_valid_artwork_filename(&card.artwork.filename));
         }
     }
 
@@ -217,11 +209,29 @@ mod tests {
             artwork: (width: 84, height: 102, fallback_path: "assets/cards/fallback.png"),
             cards: [(name: "Broken", attack: 16, battle_class: Physical,
                 physical_defense: 15, magical_defense: 15,
-                artwork: "https://finalfantasy.fandom.com/wiki/Final_Fantasy_IX_Tetra_Master_cards?file=Card001.png")],
+                artwork_filename: "broken.png")],
         )"#;
 
         let error = load_cards(source).unwrap_err().to_string();
         assert!(error.contains("catalog entry 1 (\"Broken\")"), "{error}");
         assert!(error.contains("attack"), "{error}");
+    }
+
+    #[test]
+    fn duplicate_artwork_filenames_are_rejected() {
+        let source = r#"(
+            artwork: (width: 84, height: 102, fallback_path: "assets/cards/fallback.png"),
+            cards: [
+                (name: "First", attack: 15, battle_class: Physical,
+                    physical_defense: 15, magical_defense: 15,
+                    artwork_filename: "shared.png"),
+                (name: "Second", attack: 15, battle_class: Physical,
+                    physical_defense: 15, magical_defense: 15,
+                    artwork_filename: "shared.png"),
+            ],
+        )"#;
+
+        let error = load_cards(source).unwrap_err().to_string();
+        assert!(error.contains("duplicate artwork_filename"), "{error}");
     }
 }

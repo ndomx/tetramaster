@@ -47,9 +47,9 @@ cargo check --target wasm32-unknown-unknown --no-default-features --features web
   use named expanded stats, typed battle classes, and external artwork references.
 - `assets/cards/fallback.png`: the original 84x102 image used when external card
   artwork is unavailable. Third-party card images are not stored in this repository.
-- `assets/cards/custom/`: optional Git-ignored developer artwork named
-  `Card001.png` through `Card100.png`. PNG dimensions may be any positive integer
-  multiple of 84x102; run
+- `assets/cards/custom/`: optional Git-ignored developer artwork using the
+  snake_case filenames declared in the catalog. PNG dimensions may be any
+  positive integer multiple of 84x102; run
   `cargo test --all-features supplied_custom_artwork_files_are_valid` to validate
   a supplied pack.
 - `tailwind.css`: Tailwind input compiled by Dioxus into `assets/tailwind.css`.
@@ -66,8 +66,16 @@ The current player controls Blue cards and the CPU controls Red cards. Color is
 independent of the randomly selected starting player.
 
 The catalog is parsed and validated once at startup. Its zero-based order remains
-the runtime definition index; artwork references use the corresponding one-based,
-three-digit card number (`Card001.png` through `Card100.png`).
+the runtime definition index, while each entry independently declares the
+snake_case PNG filename used for artwork lookup.
+
+## Deploy The Web App To Railway
+
+The production container serves the Dioxus bundle from `/srv`. Custom artwork is
+not included in the image: attach a Railway volume at `/artwork` and upload the
+catalog-declared PNG files to its root. Caddy maps requests such as
+`/cards/goblin.png` to `/artwork/goblin.png`; missing files use the bundled
+fallback image.
 
 ## Legal notice
 

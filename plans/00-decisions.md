@@ -33,18 +33,16 @@ force until the human explicitly changes them.
 ### M2.01 Catalog And Artwork Decisions
 
 - Runtime `CardDefinition::index` remains zero-based and is assigned by canonical
-  RON catalog order. Artwork numbering is separately one-based and zero-padded
-  from `001` through `100`.
+  RON catalog order. Artwork lookup is independent of that order.
 - Card artwork is 84x102 PNG. Copyrighted artwork is not stored in the repository;
-  each definition records its corresponding Fandom page reference using the
-  `CardNNN.png` query parameter.
+  each definition records its corresponding snake_case PNG filename.
 - The repository contains one original 84x102 PNG fallback for unavailable remote
-  artwork. Artwork metadata includes the source URL, fallback path, and dimensions;
+  artwork. Artwork metadata includes the filename, fallback path, and dimensions;
   decoded image data remains outside the core model.
 - RON fields are required. Stats use their expanded `u8` gameplay values and
   battle classes use named typed variants. Catalog validation enforces unique
-  names and artwork URLs, expected stat tiers, exact artwork dimensions, and the
-  position-derived artwork URL.
+  names and artwork filenames, expected stat tiers, exact artwork dimensions, and
+  safe, unique snake_case PNG filenames.
 
 ## Vocabulary
 
@@ -176,18 +174,18 @@ force until the human explicitly changes them.
 
 ### M2.04.1 Artwork Resolver Decisions
 
-- Canonical third-party artwork remains outside version control. Developers may
-  supply an optional local artwork pack under `assets/cards/custom/` using the
-  one-based names `Card001.png` through `Card100.png`.
+- Third-party artwork remains outside version control. Developers may supply an
+  optional local artwork pack under `assets/cards/custom/` using the snake_case
+  filenames explicitly declared by the catalog.
 - Custom artwork must be PNG whose dimensions are a positive integer multiple of
   84x102. The UI retains the logical 84:102 aspect ratio regardless of source
   resolution.
-- The web adapter resolves `CardSnapshot::definition_index` to the corresponding
-  custom filename. A failed request switches that card to the bundled fallback
+- `CardSnapshot` carries the catalog artwork filename. The web adapter resolves it
+  below the stable `/cards` URL prefix. A failed request switches that card to the bundled fallback
   and does not retry the missing source during that component's lifetime.
-- Dioxus bundles the entire optional artwork directory so dynamically resolved
-  filenames work with hashed production asset paths. Custom PNGs are ignored by
-  Git, and developers are responsible for permission to use supplied artwork.
+- Custom PNGs are ignored by Git and excluded from production bundles. Deployments
+  may serve `/cards` from external storage such as a Railway volume. Developers
+  are responsible for permission to use supplied artwork.
 
 ### M2.04.2 Contested Preview Decisions
 

@@ -1,6 +1,5 @@
 use std::fmt;
 
-pub const CARD_ARTWORK_COUNT: usize = 100;
 pub const CARD_ARTWORK_WIDTH: u32 = 84;
 pub const CARD_ARTWORK_HEIGHT: u32 = 102;
 
@@ -43,17 +42,13 @@ impl<'a> ArtworkResolver<'a> {
         }
     }
 
-    pub fn resolve(self, definition_index: usize) -> Result<ArtworkSources, ArtworkError> {
-        if definition_index >= CARD_ARTWORK_COUNT {
-            return Err(ArtworkError::DefinitionIndexOutOfRange(definition_index));
+    pub fn resolve(self, filename: &str) -> Result<ArtworkSources, ArtworkError> {
+        if !is_valid_artwork_filename(filename) {
+            return Err(ArtworkError::InvalidFilename(filename.to_owned()));
         }
 
         Ok(ArtworkSources {
-            primary_url: format!(
-                "{}/Card{:03}.png",
-                self.custom_base_url,
-                definition_index + 1
-            ),
+            primary_url: format!("{}/{filename}", self.custom_base_url),
             fallback_url: self.fallback_url.to_owned(),
         })
     }
@@ -61,7 +56,6 @@ impl<'a> ArtworkResolver<'a> {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ArtworkError {
-    DefinitionIndexOutOfRange(usize),
     InvalidFilename(String),
     InvalidPng,
     UnsupportedDimensions { width: u32, height: u32 },
@@ -70,12 +64,9 @@ pub enum ArtworkError {
 impl fmt::Display for ArtworkError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::DefinitionIndexOutOfRange(index) => {
-                write!(formatter, "card definition index {index} is out of range")
-            }
             Self::InvalidFilename(filename) => write!(
                 formatter,
-                "artwork filename must be Card001.png through Card100.png, got {filename:?}"
+                "artwork filename must be a snake_case PNG filename, got {filename:?}"
             ),
             Self::InvalidPng => formatter.write_str("artwork must be a valid PNG"),
             Self::UnsupportedDimensions { width, height } => write!(
@@ -86,21 +77,18 @@ impl fmt::Display for ArtworkError {
     }
 }
 
-pub fn definition_index_from_filename(filename: &str) -> Result<usize, ArtworkError> {
-    let number = filename
-        .strip_prefix("Card")
-        .and_then(|value| value.strip_suffix(".png"))
-        .filter(|value| value.len() == 3 && value.bytes().all(|byte| byte.is_ascii_digit()))
-        .and_then(|value| value.parse::<usize>().ok())
-        .ok_or_else(|| ArtworkError::InvalidFilename(filename.to_owned()))?;
-    let definition_index = number
-        .checked_sub(1)
-        .ok_or_else(|| ArtworkError::InvalidFilename(filename.to_owned()))?;
-    if definition_index >= CARD_ARTWORK_COUNT {
-        return Err(ArtworkError::InvalidFilename(filename.to_owned()));
-    }
+pub fn is_valid_artwork_filename(filename: &str) -> bool {
+    let Some(stem) = filename.strip_suffix(".png") else {
+        return false;
+    };
 
-    Ok(definition_index)
+    !stem.is_empty()
+        && stem.split('_').all(|word| {
+            !word.is_empty()
+                && word
+                    .bytes()
+                    .all(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit())
+        })
 }
 
 pub fn validate_custom_artwork(bytes: &[u8]) -> Result<(u32, u32), ArtworkError> {
@@ -130,49 +118,29 @@ mod tests {
     }
 
     #[test]
-    fn resolves_every_catalog_index_to_its_one_based_filename() {
+    fn resolves_catalog_filenames_under_the_configured_base_url() {
         let resolver = ArtworkResolver::new("/custom/", "/fallback.png");
+        let sources = resolver.resolve("lizard_man.png").unwrap();
+        assert_eq!(sources.primary_url, "/custom/lizard_man.png");
+        assert_eq!(sources.fallback_url, "/fallback.png");
+    }
 
-        for index in 0..CARD_ARTWORK_COUNT {
-            let sources = resolver.resolve(index).unwrap();
-            assert_eq!(
-                sources.primary_url,
-                format!("/custom/Card{:03}.png", index + 1)
-            );
-            assert_eq!(sources.fallback_url, "/fallback.png");
+    #[test]
+    fn accepts_only_snake_case_png_filenames() {
+        for filename in ["goblin.png", "lizard_man.png", "excalibur_ii.png"] {
+            assert!(is_valid_artwork_filename(filename), "rejected {filename}");
         }
-    }
-
-    #[test]
-    fn rejects_definition_indices_outside_the_catalog() {
-        let error = ArtworkResolver::new("/custom", "/fallback.png")
-            .resolve(CARD_ARTWORK_COUNT)
-            .unwrap_err();
-
-        assert_eq!(
-            error,
-            ArtworkError::DefinitionIndexOutOfRange(CARD_ARTWORK_COUNT)
-        );
-    }
-
-    #[test]
-    fn accepts_only_canonical_custom_artwork_filenames() {
-        assert_eq!(definition_index_from_filename("Card001.png"), Ok(0));
-        assert_eq!(definition_index_from_filename("Card100.png"), Ok(99));
         for filename in [
-            "Card000.png",
-            "Card101.png",
-            "Card1.png",
-            "card001.png",
-            "Card001.webp",
+            "",
+            ".png",
+            "Goblin.png",
+            "lizard man.png",
+            "lizard__man.png",
+            "../goblin.png",
+            "goblin.webp",
+            "goblin.png?version=1",
         ] {
-            assert!(
-                matches!(
-                    definition_index_from_filename(filename),
-                    Err(ArtworkError::InvalidFilename(_))
-                ),
-                "accepted {filename}"
-            );
+            assert!(!is_valid_artwork_filename(filename), "accepted {filename}");
         }
     }
 
@@ -206,10 +174,10 @@ mod tests {
     #[test]
     fn load_failure_switches_to_the_fallback_permanently() {
         let sources = ArtworkResolver::new("/custom", "/fallback.png")
-            .resolve(0)
+            .resolve("goblin.png")
             .unwrap();
         let mut state = ArtworkLoadState::Primary;
-        assert_eq!(state.source(&sources), "/custom/Card001.png");
+        assert_eq!(state.source(&sources), "/custom/goblin.png");
 
         state.use_fallback();
         assert_eq!(state.source(&sources), "/fallback.png");
@@ -219,6 +187,10 @@ mod tests {
 
     #[test]
     fn supplied_custom_artwork_files_are_valid() {
+        let catalog_filenames = super::super::CARDS
+            .iter()
+            .map(|card| card.artwork.filename.as_str())
+            .collect::<std::collections::HashSet<_>>();
         let directory =
             std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("assets/cards/custom");
         for entry in std::fs::read_dir(directory).unwrap() {
@@ -228,8 +200,16 @@ mod tests {
             }
 
             let filename = path.file_name().unwrap().to_str().unwrap();
-            definition_index_from_filename(filename)
-                .unwrap_or_else(|error| panic!("{}: {error}", path.display()));
+            assert!(
+                is_valid_artwork_filename(filename),
+                "{}: invalid artwork filename",
+                path.display()
+            );
+            assert!(
+                catalog_filenames.contains(filename),
+                "{}: filename is not declared in the catalog",
+                path.display()
+            );
             let bytes = std::fs::read(&path).unwrap();
             validate_custom_artwork(&bytes)
                 .unwrap_or_else(|error| panic!("{}: {error}", path.display()));

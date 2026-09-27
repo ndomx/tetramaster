@@ -18,7 +18,7 @@ use super::{
 };
 
 const FALLBACK_CARD_ARTWORK: Asset = asset!("/assets/cards/fallback.png");
-const CUSTOM_CARD_ARTWORK: Asset = asset!("/assets/cards/custom");
+const CUSTOM_CARD_ARTWORK_URL: &str = "/cards";
 
 #[derive(Clone, Copy, PartialEq)]
 enum CardSize {
@@ -484,11 +484,10 @@ fn CardView(
     presentation_class: &'static str,
     presentation_style: String,
 ) -> Element {
-    let custom_base_url = CUSTOM_CARD_ARTWORK.to_string();
     let fallback_url = FALLBACK_CARD_ARTWORK.to_string();
-    let artwork = ArtworkResolver::new(&custom_base_url, &fallback_url)
-        .resolve(card.definition_index)
-        .expect("card snapshots must reference a catalog definition");
+    let artwork = ArtworkResolver::new(CUSTOM_CARD_ARTWORK_URL, &fallback_url)
+        .resolve(&card.artwork_filename)
+        .expect("card snapshots must contain a validated artwork filename");
     let mut artwork_state = use_signal(|| ArtworkLoadState::Primary);
     let artwork_source = artwork_state().source(&artwork).to_owned();
     let owner_class = match owner {

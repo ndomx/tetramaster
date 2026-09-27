@@ -21,7 +21,7 @@ fn definition(battle_class: BattleClass) -> CardDefinition {
             mag_defense: 0,
         },
         artwork: CardArtwork {
-            source_url: "https://example.invalid/card.png".into(),
+            filename: "test_card.png".into(),
             fallback_path: "assets/cards/fallback.png".into(),
             width: 84,
             height: 102,
