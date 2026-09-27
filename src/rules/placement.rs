@@ -1,7 +1,11 @@
 use std::fmt::{Display, Formatter};
 
 use crate::{
-    models::core::{board::Board, geometry::Position},
+    models::core::{
+        board::{Board, BoardSide},
+        card::Card,
+        geometry::Position,
+    },
     utils::{constants::TILE_TOTAL, helpers::idx2pos},
 };
 
@@ -54,8 +58,21 @@ pub fn discover_interactions(
         .get_card(position)
         .ok_or(PlacementInteractionError { position })?;
 
-    let mut interactions: Vec<_> = placed
-        .card
+    Ok(discover_interactions_for_card(
+        board,
+        &placed.card,
+        placed.controller,
+        position,
+    ))
+}
+
+pub fn discover_interactions_for_card(
+    board: &Board,
+    card: &Card,
+    controller: BoardSide,
+    position: Position,
+) -> Vec<PlacementInteraction> {
+    let mut interactions: Vec<_> = card
         .facing()
         .into_iter()
         .filter_map(|direction| {
@@ -63,9 +80,9 @@ pub fn discover_interactions(
                 .get_relative(position, &direction)
                 .map(|neighbor| (neighbor, direction))
         })
-        .filter(|(neighbor, _)| neighbor.controller != placed.controller)
+        .filter(|(neighbor, _)| neighbor.controller != controller)
         .map(|(neighbor, direction)| PlacementInteraction {
-            source_card_id: placed.card.id,
+            source_card_id: card.id,
             target_card_id: neighbor.card.id,
             kind: if neighbor.card.is_facing(direction.opposite()) {
                 PlacementInteractionKind::Battle
@@ -76,7 +93,7 @@ pub fn discover_interactions(
         .collect();
 
     interactions.sort_by_key(|interaction| interaction.kind);
-    Ok(interactions)
+    interactions
 }
 
 #[cfg(test)]

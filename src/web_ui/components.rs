@@ -11,7 +11,7 @@ use crate::{
     utils::constants::BOARD_SIZE,
 };
 
-use super::action_for_selection;
+use super::{CombatPresentation, PreviewKind, PreviewTarget, action_for_selection};
 
 const FALLBACK_CARD_ARTWORK: Asset = asset!("/assets/cards/fallback.png");
 const CUSTOM_CARD_ARTWORK: Asset = asset!("/assets/cards/custom");
@@ -37,9 +37,14 @@ pub(super) fn GameApp(
     error: Option<String>,
     restart_confirmation_open: bool,
     help_open: bool,
+    previewed_position: Option<Position>,
+    preview_targets: Vec<PreviewTarget>,
+    combat: Option<CombatPresentation>,
     on_select_card: EventHandler<u64>,
     on_cancel_selection: EventHandler<MouseEvent>,
     on_play_card: EventHandler<Position>,
+    on_preview_position: EventHandler<Position>,
+    on_clear_preview: EventHandler<Position>,
     on_request_restart: EventHandler<MouseEvent>,
     on_cancel_restart: EventHandler<MouseEvent>,
     on_confirm_restart: EventHandler<MouseEvent>,
@@ -86,7 +91,16 @@ pub(super) fn GameApp(
                     div {
                         class: "flex flex-col items-center gap-2",
                         GameStatus { interaction, status, error }
-                        Board { snapshot: snapshot.clone(), selected_card_id, on_play_card }
+                        Board {
+                            snapshot: snapshot.clone(),
+                            selected_card_id,
+                            previewed_position,
+                            preview_targets,
+                            combat,
+                            on_play_card,
+                            on_preview_position,
+                            on_clear_preview,
+                        }
                     }
                 }
 
@@ -173,7 +187,12 @@ fn GameStatus(interaction: InteractionState, status: String, error: Option<Strin
 fn Board(
     snapshot: GameSnapshot,
     selected_card_id: Option<u64>,
+    previewed_position: Option<Position>,
+    preview_targets: Vec<PreviewTarget>,
+    combat: Option<CombatPresentation>,
     on_play_card: EventHandler<Position>,
+    on_preview_position: EventHandler<Position>,
+    on_clear_preview: EventHandler<Position>,
 ) -> Element {
     rsx! {
         section {
@@ -185,7 +204,18 @@ fn Board(
                     {
                         let position = Position::new(index / BOARD_SIZE, index % BOARD_SIZE);
                         let is_legal = action_for_selection(&snapshot, selected_card_id, position).is_some();
-                        rsx! { BoardCell { key: "{index}", tile: tile.clone(), position, is_legal, on_play_card } }
+                        rsx! { BoardCell {
+                            key: "{index}",
+                            tile: tile.clone(),
+                            position,
+                            is_legal,
+                            is_previewed: previewed_position == Some(position),
+                            preview_targets: preview_targets.clone(),
+                            combat,
+                            on_play_card,
+                            on_preview_position,
+                            on_clear_preview,
+                        } }
                     }
                 }
             }
@@ -198,14 +228,21 @@ fn BoardCell(
     tile: BoardTileSnapshot,
     position: Position,
     is_legal: bool,
+    is_previewed: bool,
+    preview_targets: Vec<PreviewTarget>,
+    combat: Option<CombatPresentation>,
     on_play_card: EventHandler<Position>,
+    on_preview_position: EventHandler<Position>,
+    on_clear_preview: EventHandler<Position>,
 ) -> Element {
     let row = position.row + 1;
     let column = position.col + 1;
     match tile {
         BoardTileSnapshot::Empty => {
-            let class = if is_legal {
-                "relative aspect-[84/102] rounded-lg border-2 border-dashed border-emerald-300 bg-transparent transition hover:border-emerald-100 focus:outline-none focus:ring-4 focus:ring-emerald-200/70"
+            let class = if is_previewed {
+                "relative aspect-[84/102] overflow-hidden rounded-lg border-2 border-solid border-amber-100 bg-amber-300/35 shadow-[inset_0_0_28px_rgba(253,230,138,0.55)] transition focus:outline-none focus:ring-4 focus:ring-amber-200/80"
+            } else if is_legal {
+                "relative aspect-[84/102] overflow-hidden rounded-lg border-2 border-dashed border-emerald-300 bg-transparent transition hover:border-emerald-100 focus:outline-none focus:ring-4 focus:ring-emerald-200/70"
             } else {
                 "relative aspect-[84/102] rounded-lg border border-transparent bg-transparent"
             };
@@ -219,6 +256,17 @@ fn BoardCell(
                     r#type: "button", class, disabled: !is_legal,
                     aria_label: "Row {row}, column {column}: {label}",
                     onclick: move |_| on_play_card.call(position),
+                    onmouseenter: move |_| on_preview_position.call(position),
+                    onmouseleave: move |_| on_clear_preview.call(position),
+                    onfocus: move |_| on_preview_position.call(position),
+                    onblur: move |_| on_clear_preview.call(position),
+                    if is_previewed {
+                        span {
+                            class: "pointer-events-none absolute inset-0 flex items-center justify-center bg-[radial-gradient(circle,rgba(253,230,138,0.38),rgba(245,158,11,0.18))] font-black uppercase tracking-[0.16em] text-amber-50 drop-shadow",
+                            aria_hidden: "true",
+                            "Target"
+                        }
+                    }
                 }
             }
         }
@@ -234,7 +282,20 @@ fn BoardCell(
                 BoardSide::Blue => CardOwner::Human,
                 BoardSide::Red => CardOwner::Cpu,
             };
-            rsx! { div { class: "aspect-[84/102]", aria_label: "Row {row}, column {column}", CardView { card, size: CardSize::Board, owner, selected: false } } }
+            let preview_kind = preview_targets
+                .iter()
+                .find(|target| target.card_id == card.id)
+                .map(|target| target.kind);
+            let combat_power = combat.and_then(|combat| {
+                if combat.attacker_id == card.id {
+                    Some(("Attack", combat.attack_power))
+                } else if combat.defender_id == card.id {
+                    Some(("Defense", combat.defense_power))
+                } else {
+                    None
+                }
+            });
+            rsx! { div { class: "aspect-[84/102]", aria_label: "Row {row}, column {column}", CardView { card, size: CardSize::Board, owner, selected: false, preview_kind, combat_power } } }
         }
     }
 }
@@ -274,7 +335,7 @@ fn Hand(
                                 aria_pressed: selected,
                                 aria_label: accessible_name,
                                 onclick: move |_| on_select_card.call(card_id),
-                                CardView { card, size: CardSize::Hand, owner: CardOwner::Human, selected }
+                                CardView { card, size: CardSize::Hand, owner: CardOwner::Human, selected, preview_kind: None, combat_power: None }
                             }
                         }
                     }
@@ -285,7 +346,14 @@ fn Hand(
 }
 
 #[component]
-fn CardView(card: CardSnapshot, size: CardSize, owner: CardOwner, selected: bool) -> Element {
+fn CardView(
+    card: CardSnapshot,
+    size: CardSize,
+    owner: CardOwner,
+    selected: bool,
+    preview_kind: Option<PreviewKind>,
+    combat_power: Option<(&'static str, u8)>,
+) -> Element {
     let custom_base_url = CUSTOM_CARD_ARTWORK.to_string();
     let fallback_url = FALLBACK_CARD_ARTWORK.to_string();
     let artwork = ArtworkResolver::new(&custom_base_url, &fallback_url)
@@ -306,12 +374,21 @@ fn CardView(card: CardSnapshot, size: CardSize, owner: CardOwner, selected: bool
     } else {
         "ring-1 ring-black/30"
     };
+    let preview_class = match preview_kind {
+        Some(PreviewKind::Attack) => {
+            "outline outline-4 outline-dashed outline-rose-300 shadow-rose-400/60"
+        }
+        Some(PreviewKind::Capture) => {
+            "outline outline-4 outline-double outline-cyan-200 shadow-cyan-300/60"
+        }
+        None => "",
+    };
     let name_size = match size {
         CardSize::Board => "text-[10px]",
         CardSize::Hand => "text-xs",
     };
     let class = format!(
-        "relative h-full w-full overflow-visible rounded-lg border-2 {owner_class} {selected_class} text-left shadow-lg transition"
+        "relative h-full w-full overflow-visible rounded-lg border-2 {owner_class} {selected_class} {preview_class} text-left shadow-lg transition"
     );
     let stats = format_card_stats(&card);
     let stats_label = format!(
@@ -325,6 +402,26 @@ fn CardView(card: CardSnapshot, size: CardSize, owner: CardOwner, selected: bool
         article {
             class,
             span { class: "sr-only", "Controlled by {owner_label}" }
+            if let Some(preview_kind) = preview_kind {
+                span {
+                    class: "sr-only",
+                    match preview_kind {
+                        PreviewKind::Attack => "Will be attacked by this placement",
+                        PreviewKind::Capture => "Will be captured directly by this placement",
+                    }
+                }
+                div {
+                    class: match preview_kind {
+                        PreviewKind::Attack => "pointer-events-none absolute inset-x-1 top-1 z-30 rounded border border-rose-100 bg-rose-950/90 px-1 py-0.5 text-center text-[9px] font-black uppercase tracking-wider text-rose-100",
+                        PreviewKind::Capture => "pointer-events-none absolute inset-x-1 top-1 z-30 rounded border border-cyan-100 bg-cyan-950/90 px-1 py-0.5 text-center text-[9px] font-black uppercase tracking-wider text-cyan-100",
+                    },
+                    aria_hidden: "true",
+                    match preview_kind {
+                        PreviewKind::Attack => "Attack",
+                        PreviewKind::Capture => "Capture",
+                    }
+                }
+            }
             img {
                 src: artwork_source,
                 alt: "",
@@ -336,6 +433,13 @@ fn CardView(card: CardSnapshot, size: CardSize, owner: CardOwner, selected: bool
             div {
                 class: "pointer-events-none absolute inset-0 z-20",
                 for arrow in arrow_markers(card.arrows) { span { class: "absolute flex h-4 w-4 items-center justify-center text-sm font-black leading-none text-yellow-300 drop-shadow-[0_1px_1px_rgba(0,0,0,0.95)] {arrow.class}", aria_hidden: "true", "▲" } }
+            }
+            if let Some((role, power)) = combat_power {
+                div {
+                    class: "absolute left-1/2 top-1/2 z-30 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-yellow-200 bg-slate-950/90 px-2 py-1 font-mono text-sm font-black text-yellow-100 shadow-lg",
+                    aria_label: "{role} power {power}",
+                    "{power}"
+                }
             }
             div {
                 class: "absolute inset-x-1 bottom-2 z-10 overflow-hidden rounded text-center shadow backdrop-blur-[1px] {stats_mask_class}",

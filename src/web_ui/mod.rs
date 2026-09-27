@@ -10,12 +10,33 @@ use crate::{
             GameSession, GameSnapshot, GameUpdate, InteractionState, PlayerSide,
         },
     },
+    rules::placement::PlacementInteractionKind,
     utils::random::GameRng,
 };
 
 use components::GameApp;
 
 const TAILWIND_CSS: Asset = asset!("/assets/tailwind.css");
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+struct CombatPresentation {
+    attacker_id: u64,
+    defender_id: u64,
+    attack_power: u8,
+    defense_power: u8,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum PreviewKind {
+    Attack,
+    Capture,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+struct PreviewTarget {
+    card_id: u64,
+    kind: PreviewKind,
+}
 
 struct WebGame {
     session: GameSession,
@@ -26,6 +47,9 @@ struct WebGame {
     error: Option<String>,
     restart_confirmation_open: bool,
     help_open: bool,
+    previewed_position: Option<Position>,
+    preview_targets: Vec<PreviewTarget>,
+    combat: Option<CombatPresentation>,
 }
 
 impl WebGame {
@@ -43,6 +67,9 @@ impl WebGame {
             error: None,
             restart_confirmation_open: false,
             help_open: false,
+            previewed_position: None,
+            preview_targets: Vec::new(),
+            combat: None,
         }
     }
 
@@ -58,12 +85,54 @@ impl WebGame {
         }
 
         self.selected_card_id = (self.selected_card_id != Some(card_id)).then_some(card_id);
+        self.clear_preview();
         self.error = None;
     }
 
     fn cancel_selection(&mut self) {
         self.selected_card_id = None;
+        self.clear_preview();
         self.error = None;
+    }
+
+    fn preview_position(&mut self, position: Position) {
+        let Some(action) = action_for_selection(&self.snapshot, self.selected_card_id, position)
+        else {
+            self.clear_preview();
+            return;
+        };
+
+        match self.session.preview(action) {
+            Ok(interactions) => {
+                self.previewed_position = Some(position);
+                self.preview_targets = interactions
+                    .into_iter()
+                    .map(|interaction| PreviewTarget {
+                        card_id: interaction.target_card_id,
+                        kind: match interaction.kind {
+                            PlacementInteractionKind::Battle => PreviewKind::Attack,
+                            PlacementInteractionKind::DirectCapture => PreviewKind::Capture,
+                        },
+                    })
+                    .collect();
+                self.error = None;
+            }
+            Err(error) => {
+                self.clear_preview();
+                self.show_error(error);
+            }
+        }
+    }
+
+    fn clear_preview_at(&mut self, position: Position) {
+        if self.previewed_position == Some(position) {
+            self.clear_preview();
+        }
+    }
+
+    fn clear_preview(&mut self) {
+        self.previewed_position = None;
+        self.preview_targets.clear();
     }
 
     fn handle_escape(&mut self) {
@@ -124,6 +193,22 @@ impl WebGame {
     }
 
     fn apply_update(&mut self, update: GameUpdate) {
+        self.clear_preview();
+        self.combat = update.events.last().and_then(|event| match event {
+            GameEvent::CombatResolved {
+                attacker_id,
+                defender_id,
+                attack_power,
+                defense_power,
+                ..
+            } => Some(CombatPresentation {
+                attacker_id: *attacker_id,
+                defender_id: *defender_id,
+                attack_power: *attack_power,
+                defense_power: *defense_power,
+            }),
+            _ => None,
+        });
         if let Some(event) = update.events.last() {
             self.status = event_message(event);
         }
@@ -173,6 +258,9 @@ pub fn App() -> Element {
     let error = game.read().error.clone();
     let restart_confirmation_open = game.read().restart_confirmation_open;
     let help_open = game.read().help_open;
+    let previewed_position = game.read().previewed_position;
+    let preview_targets = game.read().preview_targets.clone();
+    let combat = game.read().combat;
 
     rsx! {
         document::Stylesheet { href: TAILWIND_CSS }
@@ -184,9 +272,14 @@ pub fn App() -> Element {
             error,
             restart_confirmation_open,
             help_open,
+            previewed_position,
+            preview_targets,
+            combat,
             on_select_card: move |card_id| game.write().select_card(card_id),
             on_cancel_selection: move |_| game.write().cancel_selection(),
             on_play_card: move |position| game.write().play_selected_card(position),
+            on_preview_position: move |position| game.write().preview_position(position),
+            on_clear_preview: move |position| game.write().clear_preview_at(position),
             on_request_restart: move |_| game.write().request_restart(),
             on_cancel_restart: move |_| game.write().cancel_restart(),
             on_confirm_restart: move |_| game.write().confirm_restart(),
@@ -222,10 +315,20 @@ fn event_message(event: &GameEvent) -> String {
             position.row + 1,
             position.col + 1
         ),
-        GameEvent::CombatResolved { outcome, .. } => match outcome {
-            CombatResult::AttackerWon => "Combat resolved: attacker won.".into(),
-            CombatResult::DefenderWon => "Combat resolved: defender won.".into(),
-        },
+        GameEvent::CombatResolved {
+            attack_power,
+            defense_power,
+            outcome,
+            ..
+        } => {
+            let winner = match outcome {
+                CombatResult::AttackerWon => "attacker",
+                CombatResult::DefenderWon => "defender",
+            };
+            format!(
+                "Combat resolved: attack {attack_power} vs defense {defense_power}; {winner} won."
+            )
+        }
         GameEvent::ControlChanged { reason, .. } => {
             let reason = match reason {
                 ControlChangeReason::DirectCapture => "direct capture",

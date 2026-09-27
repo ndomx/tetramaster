@@ -107,6 +107,8 @@ pub enum GameEvent {
     CombatResolved {
         attacker_id: u64,
         defender_id: u64,
+        attack_power: u8,
+        defense_power: u8,
         outcome: CombatResult,
     },
     ControlChanged {

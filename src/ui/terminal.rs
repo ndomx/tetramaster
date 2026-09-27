@@ -229,13 +229,17 @@ fn event_message(event: &GameEvent) -> String {
         GameEvent::CombatResolved {
             attacker_id,
             defender_id,
+            attack_power,
+            defense_power,
             outcome,
         } => {
             let winner = match outcome {
                 CombatResult::AttackerWon => "attacker",
                 CombatResult::DefenderWon => "defender",
             };
-            format!("Combat between cards {attacker_id} and {defender_id}: {winner} won.")
+            format!(
+                "Combat between cards {attacker_id} ({attack_power}) and {defender_id} ({defense_power}): {winner} won."
+            )
         }
         GameEvent::ControlChanged {
             card_id,

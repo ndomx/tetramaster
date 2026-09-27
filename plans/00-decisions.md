@@ -189,6 +189,22 @@ force until the human explicitly changes them.
   filenames work with hashed production asset paths. Custom PNGs are ignored by
   Git, and developers are responsible for permission to use supplied artwork.
 
+### M2.04.2 Contested Preview Decisions
+
+- `GameSession::preview` is the frontend-neutral, read-only query for a proposed
+  human `GameAction`. It applies the same interaction-state, position, and hand
+  validation as dispatch, then reuses placement interaction discovery without
+  mutating the session or consuming randomness.
+- Preview results include both battles and direct captures in the rule engine's
+  established order. The web adapter identifies targets by runtime card ID and
+  does not duplicate arrow or adjacency rules.
+- Pointer hover and keyboard focus show the preview immediately. The destination
+  uses a full-face amber mask, while battle and direct-capture targets use
+  distinct high-contrast patterns, visible labels, and assistive text.
+- Combat resolution returns the final attack and defense powers after randomness
+  is applied. `GameEvent::CombatResolved` carries those exact values alongside
+  the outcome so frontends can present the historical calculation.
+
 Candidate event families are game start, turn start, card placement, combat
 resolution, ownership change, turn end, and game finish. Exact variant payloads
 must be agreed with the human during M1.09 before implementation.
