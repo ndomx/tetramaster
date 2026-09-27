@@ -21,7 +21,8 @@ use crate::{
         combat::{CombatOutcome, CombatParams, resolve_combat},
         combo::{ComboCapture, discover_combo_captures},
         placement::{
-            PlacementInteractionKind, discover_interactions, is_legal_position, legal_positions,
+            PlacementInteraction, PlacementInteractionKind, discover_interactions,
+            discover_interactions_for_card, is_legal_position, legal_positions,
         },
     },
     utils::{constants::MAX_HAND_CARDS, random::GameRng},
@@ -148,6 +149,23 @@ impl GameSession {
             card_id,
             position,
         }))
+    }
+
+    pub fn preview(&self, action: GameAction) -> Result<Vec<PlacementInteraction>, GameError> {
+        let actual = self.interaction_state();
+        if actual != InteractionState::AwaitingPlayerAction {
+            return Err(GameError::InvalidInteraction {
+                expected: InteractionState::AwaitingPlayerAction,
+                actual,
+            });
+        }
+        let card_index = self.validate_action(action, &self.human_player.hand)?;
+        Ok(discover_interactions_for_card(
+            &self.board,
+            &self.human_player.hand[card_index],
+            self.human_player.board_side,
+            action.position(),
+        ))
     }
 
     pub fn advance(&mut self) -> Result<GameUpdate, GameError> {
@@ -336,14 +354,14 @@ impl GameSession {
                     .ok_or_else(|| GameError::Internal("cannot find combat target".into()))?;
                 let source_controller = source.controller;
                 let target_controller = target.controller;
-                let outcome = resolve_combat(
+                let resolution = resolve_combat(
                     CombatParams {
                         attacker: &source.card,
                         defender: &target.card,
                     },
                     &mut self.rng,
                 );
-                self.resolved_capture = Some(match outcome {
+                self.resolved_capture = Some(match resolution.outcome {
                     CombatOutcome::Victory => ResolvedCapture {
                         card_id: pending_effect.target_card_id,
                         new_controller: source_controller,
@@ -362,7 +380,9 @@ impl GameSession {
                 Ok(GameEvent::CombatResolved {
                     attacker_id: pending_effect.source_card_id,
                     defender_id: pending_effect.target_card_id,
-                    outcome: match outcome {
+                    attack_power: resolution.attack_power,
+                    defense_power: resolution.defense_power,
+                    outcome: match resolution.outcome {
                         CombatOutcome::Victory => CombatResult::AttackerWon,
                         CombatOutcome::Defeat => CombatResult::DefenderWon,
                     },
@@ -928,6 +948,66 @@ mod tests {
     }
 
     #[test]
+    fn preview_matches_placement_discovery_without_mutating_session_or_rng() {
+        fn preview_game() -> GameSession {
+            let mut game = configured_game(12);
+            let mut tiles = empty_tiles();
+            tiles[1] = Tile::Occupied(BoardCard {
+                controller: BoardSide::Red,
+                card: card(
+                    20,
+                    1 << crate::models::core::geometry::Direction::S as u8,
+                    BattleClass::Physical,
+                    0,
+                    0,
+                    0,
+                ),
+            });
+            tiles[6] = Tile::Occupied(BoardCard {
+                controller: BoardSide::Red,
+                card: card(30, 0, BattleClass::Physical, 0, 0, 0),
+            });
+            game.board = Board::from_tiles(tiles);
+            game.human_player.hand = vec![card(
+                10,
+                (1 << crate::models::core::geometry::Direction::N as u8)
+                    | (1 << crate::models::core::geometry::Direction::E as u8),
+                BattleClass::Physical,
+                0,
+                0,
+                0,
+            )];
+            game.active_player = Some(PlayerSide::Human);
+            game.state = GamePhase::StartTurn;
+            game.turn_announced = true;
+            game
+        }
+
+        let action = GameAction::new(10, Position::new(1, 1));
+        let mut previewed = preview_game();
+        let mut untouched = preview_game();
+        let snapshot_before = previewed.snapshot();
+
+        let interactions = previewed.preview(action).unwrap();
+
+        assert_eq!(previewed.snapshot(), snapshot_before);
+        assert_eq!(
+            interactions
+                .iter()
+                .map(|interaction| (interaction.target_card_id, interaction.kind))
+                .collect::<Vec<_>>(),
+            vec![
+                (20, PlacementInteractionKind::Battle),
+                (30, PlacementInteractionKind::DirectCapture),
+            ]
+        );
+        assert_eq!(previewed.dispatch(action), untouched.dispatch(action));
+        while previewed.interaction_state() == InteractionState::Advancing {
+            assert_eq!(previewed.advance(), untouched.advance());
+        }
+    }
+
+    #[test]
     fn combat_and_control_change_are_separate_event_transitions() {
         let mut game = configured_game(11);
         let mut tiles = empty_tiles();
@@ -946,19 +1026,28 @@ mod tests {
         };
 
         let combat = game.advance().unwrap();
-        let (captured_id, controller_before) = match combat.events[0] {
+        let (captured_id, controller_before, attack_power, defense_power) = match combat.events[0] {
             GameEvent::CombatResolved {
                 attacker_id: 10,
                 defender_id: 20,
+                attack_power,
+                defense_power,
                 outcome: CombatResult::AttackerWon,
-            } => (20, BoardSide::Red),
+            } => (20, BoardSide::Red, attack_power, defense_power),
             GameEvent::CombatResolved {
                 attacker_id: 10,
                 defender_id: 20,
+                attack_power,
+                defense_power,
                 outcome: CombatResult::DefenderWon,
-            } => (10, BoardSide::Blue),
+            } => (10, BoardSide::Blue, attack_power, defense_power),
             ref event => panic!("unexpected event: {event:?}"),
         };
+        assert_eq!(
+            attack_power > defense_power,
+            captured_id == 20,
+            "reported powers must agree with the reported winner"
+        );
         assert_eq!(
             game.board
                 .position_of_card(captured_id)

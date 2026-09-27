@@ -189,6 +189,43 @@ force until the human explicitly changes them.
   filenames work with hashed production asset paths. Custom PNGs are ignored by
   Git, and developers are responsible for permission to use supplied artwork.
 
+### M2.04.2 Contested Preview Decisions
+
+- `GameSession::preview` is the frontend-neutral, read-only query for a proposed
+  human `GameAction`. It applies the same interaction-state, position, and hand
+  validation as dispatch, then reuses placement interaction discovery without
+  mutating the session or consuming randomness.
+- Preview results include both battles and direct captures in the rule engine's
+  established order. The web adapter identifies targets by runtime card ID and
+  does not duplicate arrow or adjacency rules.
+- Pointer hover and keyboard focus show the preview immediately. The destination
+  uses a full-face amber mask, while battle and direct-capture targets use
+  distinct high-contrast patterns, visible labels, and assistive text.
+- Combat resolution returns the final attack and defense powers after randomness
+  is applied. `GameEvent::CombatResolved` carries those exact values alongside
+  the outcome so frontends can present the historical calculation.
+
+### M2.05 Animation And Polish Decisions
+
+- Web presentation consumes one `GameEvent` at a time and does not call
+  `advance` until that event's presentation finishes. Presentation tokens make
+  delayed tasks harmless after restart or a reduced-motion mode change.
+- Timing remains frontend-only and is centralized in
+  `src/web_ui/animation_constants.rs`: game and human-turn announcements use
+  300ms, CPU anticipation 400ms, placement 450ms, combat 700ms, ordinary control
+  changes 450ms, combos 325ms, turn end 150ms, and game finish 600ms.
+- Placement deals from the appropriate hand direction, combat pulses both
+  participants while showing resolved powers, control changes flip, combos use
+  a shorter impact treatment, and game completion fades in the result dialog.
+- The web adapter initializes reduced motion from the browser preference and
+  exposes a persistent per-match toggle. Reduced motion removes decorative
+  movement and uses a zero-duration render boundary without skipping events.
+- Gameplay input is disabled while an event is being presented. Help and restart
+  remain available and pause progression; confirming restart invalidates stale
+  presentation work, while closing a dialog resumes from the next event.
+- Animation uses transforms, opacity, filters, and overlays without changing
+  board geometry. Audio remains out of scope.
+
 Candidate event families are game start, turn start, card placement, combat
 resolution, ownership change, turn end, and game finish. Exact variant payloads
 must be agreed with the human during M1.09 before implementation.

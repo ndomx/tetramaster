@@ -14,11 +14,22 @@ pub enum CombatOutcome {
     Defeat,
 }
 
-pub fn resolve_combat(params: CombatParams<'_>, rng: &mut GameRng) -> CombatOutcome {
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CombatResolution {
+    pub outcome: CombatOutcome,
+    pub attack_power: u8,
+    pub defense_power: u8,
+}
+
+pub fn resolve_combat(params: CombatParams<'_>, rng: &mut GameRng) -> CombatResolution {
     let attack_power = attack_value(params.attacker, rng);
     let defense_power = defense_value(params.defender, params.attacker.stats.battle_class, rng);
 
-    resolve_power(attack_power, defense_power)
+    CombatResolution {
+        outcome: resolve_power(attack_power, defense_power),
+        attack_power,
+        defense_power,
+    }
 }
 
 fn attack_value(card: &Card, rng: &mut GameRng) -> u8 {
@@ -157,5 +168,23 @@ mod tests {
         assert_eq!(boosted_power(u8::MAX, 15), u8::MAX);
         assert_eq!(boosted_power(u8::MAX - 5, 15), u8::MAX);
         assert_eq!(boosted_power(u8::MAX - 15, 15), u8::MAX);
+    }
+
+    #[test]
+    fn resolution_reports_the_exact_powers_used_for_the_outcome() {
+        let attacker = card(1, 0, BattleClass::Physical, 20, 0, 0);
+        let defender = card(2, 0, BattleClass::Physical, 0, 10, 0);
+        let resolution = resolve_combat(
+            CombatParams {
+                attacker: &attacker,
+                defender: &defender,
+            },
+            &mut GameRng::from_seed(42),
+        );
+
+        assert_eq!(
+            resolution.outcome,
+            resolve_power(resolution.attack_power, resolution.defense_power)
+        );
     }
 }
