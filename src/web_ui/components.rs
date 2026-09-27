@@ -5,13 +5,17 @@ use crate::{
     models::{
         core::{board::BoardSide, geometry::Position},
         session::{
-            BoardTileSnapshot, CardSnapshot, GameResult, GameSnapshot, InteractionState, PlayerSide,
+            BoardTileSnapshot, CardSnapshot, ControlChangeReason, GameEvent, GameResult,
+            GameSnapshot, InteractionState, PlayerSide,
         },
     },
     utils::constants::BOARD_SIZE,
 };
 
-use super::{CombatPresentation, PreviewKind, PreviewTarget, action_for_selection};
+use super::{
+    CombatPresentation, PreviewKind, PreviewTarget, action_for_selection,
+    animation::presentation_duration, animation_constants::GAME_FINISHED_MS,
+};
 
 const FALLBACK_CARD_ARTWORK: Asset = asset!("/assets/cards/fallback.png");
 const CUSTOM_CARD_ARTWORK: Asset = asset!("/assets/cards/custom");
@@ -40,6 +44,9 @@ pub(super) fn GameApp(
     previewed_position: Option<Position>,
     preview_targets: Vec<PreviewTarget>,
     combat: Option<CombatPresentation>,
+    presentation: Option<GameEvent>,
+    reduced_motion: bool,
+    input_enabled: bool,
     on_select_card: EventHandler<u64>,
     on_cancel_selection: EventHandler<MouseEvent>,
     on_play_card: EventHandler<Position>,
@@ -50,6 +57,7 @@ pub(super) fn GameApp(
     on_confirm_restart: EventHandler<MouseEvent>,
     on_show_help: EventHandler<MouseEvent>,
     on_hide_help: EventHandler<MouseEvent>,
+    on_toggle_reduced_motion: EventHandler<MouseEvent>,
     on_key_down: EventHandler<KeyboardEvent>,
 ) -> Element {
     rsx! {
@@ -66,6 +74,14 @@ pub(super) fn GameApp(
                     }
                     div {
                         class: "flex items-center gap-2",
+                        button {
+                            r#type: "button",
+                            aria_pressed: reduced_motion,
+                            title: "Toggle reduced motion",
+                            class: "rounded-md border border-amber-200/50 bg-slate-950/50 px-3 py-2 text-xs font-bold text-amber-100 transition hover:border-amber-100 hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-200",
+                            onclick: move |event| on_toggle_reduced_motion.call(event),
+                            if reduced_motion { "Motion: reduced" } else { "Motion: full" }
+                        }
                         button {
                             r#type: "button",
                             aria_label: "How to play",
@@ -97,6 +113,9 @@ pub(super) fn GameApp(
                             previewed_position,
                             preview_targets,
                             combat,
+                            presentation: presentation.clone(),
+                            reduced_motion,
+                            input_enabled,
                             on_play_card,
                             on_preview_position,
                             on_clear_preview,
@@ -106,11 +125,15 @@ pub(super) fn GameApp(
 
                 Hand {
                     cards: snapshot.human_hand.clone(),
-                    interaction,
+                    input_enabled,
                     selected_card_id,
                     on_select_card,
                     on_cancel_selection,
                 }
+            }
+
+            if let Some(event) = presentation.as_ref() {
+                PresentationBanner { event: event.clone(), reduced_motion }
             }
 
             if let Some(result) = snapshot.result {
@@ -118,6 +141,7 @@ pub(super) fn GameApp(
                     result,
                     human_score: snapshot.human_score,
                     cpu_score: snapshot.cpu_score,
+                    reduced_motion,
                     on_play_again: on_request_restart,
                 }
             } else if restart_confirmation_open {
@@ -190,6 +214,9 @@ fn Board(
     previewed_position: Option<Position>,
     preview_targets: Vec<PreviewTarget>,
     combat: Option<CombatPresentation>,
+    presentation: Option<GameEvent>,
+    reduced_motion: bool,
+    input_enabled: bool,
     on_play_card: EventHandler<Position>,
     on_preview_position: EventHandler<Position>,
     on_clear_preview: EventHandler<Position>,
@@ -203,7 +230,7 @@ fn Board(
                 for (index, tile) in snapshot.board.iter().enumerate() {
                     {
                         let position = Position::new(index / BOARD_SIZE, index % BOARD_SIZE);
-                        let is_legal = action_for_selection(&snapshot, selected_card_id, position).is_some();
+                        let is_legal = input_enabled && action_for_selection(&snapshot, selected_card_id, position).is_some();
                         rsx! { BoardCell {
                             key: "{index}",
                             tile: tile.clone(),
@@ -212,6 +239,8 @@ fn Board(
                             is_previewed: previewed_position == Some(position),
                             preview_targets: preview_targets.clone(),
                             combat,
+                            presentation: presentation.clone(),
+                            reduced_motion,
                             on_play_card,
                             on_preview_position,
                             on_clear_preview,
@@ -231,6 +260,8 @@ fn BoardCell(
     is_previewed: bool,
     preview_targets: Vec<PreviewTarget>,
     combat: Option<CombatPresentation>,
+    presentation: Option<GameEvent>,
+    reduced_motion: bool,
     on_play_card: EventHandler<Position>,
     on_preview_position: EventHandler<Position>,
     on_clear_preview: EventHandler<Position>,
@@ -295,7 +326,22 @@ fn BoardCell(
                     None
                 }
             });
-            rsx! { div { class: "aspect-[84/102]", aria_label: "Row {row}, column {column}", CardView { card, size: CardSize::Board, owner, selected: false, preview_kind, combat_power } } }
+            let presentation_class =
+                card_presentation_class(&card, presentation.as_ref(), reduced_motion);
+            let presentation_style = if presentation_class.is_empty() {
+                String::new()
+            } else {
+                format!(
+                    "animation-duration: {}ms;",
+                    presentation_duration(
+                        presentation
+                            .as_ref()
+                            .expect("presentation class requires an event"),
+                        false,
+                    )
+                )
+            };
+            rsx! { div { class: "aspect-[84/102]", aria_label: "Row {row}, column {column}", CardView { card, size: CardSize::Board, owner, selected: false, preview_kind, combat_power, presentation_class, presentation_style } } }
         }
     }
 }
@@ -303,7 +349,7 @@ fn BoardCell(
 #[component]
 fn Hand(
     cards: Vec<CardSnapshot>,
-    interaction: InteractionState,
+    input_enabled: bool,
     selected_card_id: Option<u64>,
     on_select_card: EventHandler<u64>,
     on_cancel_selection: EventHandler<MouseEvent>,
@@ -331,16 +377,98 @@ fn Hand(
                             button {
                                 key: "{card_id}", r#type: "button",
                                 class: "aspect-[84/102] min-w-0 rounded-xl focus:outline-none focus:ring-4 focus:ring-amber-200/80 disabled:cursor-not-allowed disabled:opacity-50",
-                                disabled: interaction != InteractionState::AwaitingPlayerAction,
+                                disabled: !input_enabled,
                                 aria_pressed: selected,
                                 aria_label: accessible_name,
                                 onclick: move |_| on_select_card.call(card_id),
-                                CardView { card, size: CardSize::Hand, owner: CardOwner::Human, selected, preview_kind: None, combat_power: None }
+                                CardView { card, size: CardSize::Hand, owner: CardOwner::Human, selected, preview_kind: None, combat_power: None, presentation_class: "", presentation_style: String::new() }
                             }
                         }
                     }
                 }
             }
+        }
+    }
+}
+
+fn card_presentation_class(
+    card: &CardSnapshot,
+    event: Option<&GameEvent>,
+    reduced_motion: bool,
+) -> &'static str {
+    if reduced_motion {
+        return "";
+    }
+
+    match event {
+        Some(GameEvent::CardPlaced {
+            player: PlayerSide::Human,
+            card_id,
+            ..
+        }) if *card_id == card.id => "tm-card-place-human",
+        Some(GameEvent::CardPlaced {
+            player: PlayerSide::Cpu,
+            card_id,
+            ..
+        }) if *card_id == card.id => "tm-card-place-cpu",
+        Some(GameEvent::CombatResolved { attacker_id, .. }) if *attacker_id == card.id => {
+            "tm-combat-attacker"
+        }
+        Some(GameEvent::CombatResolved { defender_id, .. }) if *defender_id == card.id => {
+            "tm-combat-defender"
+        }
+        Some(GameEvent::ControlChanged {
+            card_id,
+            reason: ControlChangeReason::Combo,
+            ..
+        }) if *card_id == card.id => "tm-control-combo",
+        Some(GameEvent::ControlChanged { card_id, .. }) if *card_id == card.id => {
+            "tm-control-change"
+        }
+        _ => "",
+    }
+}
+
+#[component]
+fn PresentationBanner(event: GameEvent, reduced_motion: bool) -> Element {
+    let duration_ms = presentation_duration(&event, reduced_motion);
+    let label = match event {
+        GameEvent::GameStarted { .. } => Some("Match start"),
+        GameEvent::TurnStarted {
+            player: PlayerSide::Human,
+        } => Some("Your turn"),
+        GameEvent::TurnStarted {
+            player: PlayerSide::Cpu,
+        } => Some("CPU turn"),
+        GameEvent::CombatResolved { .. } => Some("Clash"),
+        GameEvent::ControlChanged {
+            reason: ControlChangeReason::DirectCapture,
+            ..
+        } => Some("Direct capture"),
+        GameEvent::ControlChanged {
+            reason: ControlChangeReason::Combo,
+            ..
+        } => Some("Combo"),
+        GameEvent::ControlChanged { .. } => Some("Control changed"),
+        GameEvent::TurnEnded { .. } => Some("Turn complete"),
+        GameEvent::CardPlaced { .. } | GameEvent::GameFinished { .. } => None,
+    };
+    let Some(label) = label else {
+        return rsx! {};
+    };
+    let class = if reduced_motion {
+        "tm-event-banner tm-event-banner-static"
+    } else {
+        "tm-event-banner"
+    };
+
+    rsx! {
+        div {
+            role: "status",
+            aria_live: "polite",
+            class,
+            style: "animation-duration: {duration_ms}ms;",
+            "{label}"
         }
     }
 }
@@ -353,6 +481,8 @@ fn CardView(
     selected: bool,
     preview_kind: Option<PreviewKind>,
     combat_power: Option<(&'static str, u8)>,
+    presentation_class: &'static str,
+    presentation_style: String,
 ) -> Element {
     let custom_base_url = CUSTOM_CARD_ARTWORK.to_string();
     let fallback_url = FALLBACK_CARD_ARTWORK.to_string();
@@ -388,7 +518,7 @@ fn CardView(
         CardSize::Hand => "text-xs",
     };
     let class = format!(
-        "relative h-full w-full overflow-visible rounded-lg border-2 {owner_class} {selected_class} {preview_class} text-left shadow-lg transition"
+        "relative h-full w-full overflow-visible rounded-lg border-2 {owner_class} {selected_class} {preview_class} {presentation_class} text-left shadow-lg transition"
     );
     let stats = format_card_stats(&card);
     let stats_label = format!(
@@ -401,6 +531,7 @@ fn CardView(
     rsx! {
         article {
             class,
+            style: presentation_style,
             span { class: "sr-only", "Controlled by {owner_label}" }
             if let Some(preview_kind) = preview_kind {
                 span {
@@ -515,6 +646,7 @@ fn GameOverDialog(
     result: GameResult,
     human_score: usize,
     cpu_score: usize,
+    reduced_motion: bool,
     on_play_again: EventHandler<MouseEvent>,
 ) -> Element {
     let (eyebrow, title) = match result {
@@ -522,8 +654,16 @@ fn GameOverDialog(
         GameResult::Winner(PlayerSide::Cpu) => ("Defeat", "The CPU won the match"),
         GameResult::Draw => ("Draw", "The match ended evenly"),
     };
+    let (animation_class, animation_style) = if reduced_motion {
+        ("", String::new())
+    } else {
+        (
+            "tm-game-finish",
+            format!("animation-duration: {GAME_FINISHED_MS}ms;"),
+        )
+    };
     rsx! {
-        div { role: "dialog", aria_modal: "true", aria_labelledby: "game-over-title", class: "fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 p-6 backdrop-blur-sm",
+        div { role: "dialog", aria_modal: "true", aria_labelledby: "game-over-title", class: "fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 p-6 backdrop-blur-sm {animation_class}", style: animation_style,
             div { class: "w-full max-w-md rounded-2xl border border-amber-200/50 bg-slate-900 p-8 text-center shadow-2xl shadow-black",
                 p { class: "text-xs font-black uppercase tracking-[0.35em] text-amber-300", "{eyebrow}" }
                 h2 { id: "game-over-title", class: "mt-3 font-serif text-3xl font-black text-amber-100", "{title}" }
@@ -572,5 +712,76 @@ mod tests {
         let snapshot = CardSnapshot::from(&card);
 
         assert_eq!(format_card_stats(&snapshot), "AX30");
+    }
+
+    #[test]
+    fn every_card_event_family_has_a_distinct_presentation_class() {
+        let snapshot = CardSnapshot::from(&card(1, 0, BattleClass::Physical, 0, 0, 0));
+        let position = Position::new(0, 0);
+
+        assert_eq!(
+            card_presentation_class(
+                &snapshot,
+                Some(&GameEvent::CardPlaced {
+                    player: PlayerSide::Human,
+                    card_id: 1,
+                    position,
+                }),
+                false,
+            ),
+            "tm-card-place-human"
+        );
+        assert_eq!(
+            card_presentation_class(
+                &snapshot,
+                Some(&GameEvent::CombatResolved {
+                    attacker_id: 1,
+                    defender_id: 2,
+                    attack_power: 3,
+                    defense_power: 2,
+                    outcome: crate::models::session::CombatResult::AttackerWon,
+                }),
+                false,
+            ),
+            "tm-combat-attacker"
+        );
+        assert_eq!(
+            card_presentation_class(
+                &snapshot,
+                Some(&GameEvent::ControlChanged {
+                    card_id: 1,
+                    previous_controller: BoardSide::Red,
+                    new_controller: BoardSide::Blue,
+                    reason: ControlChangeReason::DirectCapture,
+                }),
+                false,
+            ),
+            "tm-control-change"
+        );
+        assert_eq!(
+            card_presentation_class(
+                &snapshot,
+                Some(&GameEvent::ControlChanged {
+                    card_id: 1,
+                    previous_controller: BoardSide::Red,
+                    new_controller: BoardSide::Blue,
+                    reason: ControlChangeReason::Combo,
+                }),
+                false,
+            ),
+            "tm-control-combo"
+        );
+        assert_eq!(
+            card_presentation_class(
+                &snapshot,
+                Some(&GameEvent::CardPlaced {
+                    player: PlayerSide::Human,
+                    card_id: 1,
+                    position,
+                }),
+                true,
+            ),
+            ""
+        );
     }
 }

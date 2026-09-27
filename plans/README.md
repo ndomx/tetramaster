@@ -82,7 +82,7 @@ Dioxus, platform features, and separate binaries.
 - [x] [M2.04 - Build the full component and UX layer](m2-04-components-ux.md)
 - [x] [M2.04.1 - Load canonical card artwork](m2-04-1-card-artwork.md)
 - [x] [M2.04.2 - Preview contested cards](m2-04-2-contested-preview.md)
-- [ ] [M2.05 - Add event-driven animation and polish](m2-05-animation-polish.md)
+- [x] [M2.05 - Add event-driven animation and polish](m2-05-animation-polish.md)
 - [ ] [M2.06 - Decide whether to retain the TUI](m2-06-tui-decision.md)
 
 ## Global Guardrails

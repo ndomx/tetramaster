@@ -2679,9 +2679,11 @@ dependencies = [
  "crossterm",
  "dioxus",
  "getrandom 0.4.3",
+ "gloo-timers",
  "rand 0.10.2",
  "ron",
  "serde",
+ "web-sys",
 ]
 
 [[package]]
