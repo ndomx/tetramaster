@@ -18,6 +18,9 @@ use super::{
 };
 
 const FALLBACK_CARD_ARTWORK: Asset = asset!("/assets/cards/fallback.png");
+#[cfg(debug_assertions)]
+const LOCAL_CARD_ARTWORK: Asset = asset!("/assets/cards/custom");
+#[cfg(not(debug_assertions))]
 const CUSTOM_CARD_ARTWORK_URL: &str = "/cards";
 
 #[derive(Clone, Copy, PartialEq)]
@@ -485,7 +488,11 @@ fn CardView(
     presentation_style: String,
 ) -> Element {
     let fallback_url = FALLBACK_CARD_ARTWORK.to_string();
-    let artwork = ArtworkResolver::new(CUSTOM_CARD_ARTWORK_URL, &fallback_url)
+    #[cfg(debug_assertions)]
+    let custom_base_url = LOCAL_CARD_ARTWORK.to_string();
+    #[cfg(not(debug_assertions))]
+    let custom_base_url = CUSTOM_CARD_ARTWORK_URL.to_owned();
+    let artwork = ArtworkResolver::new(&custom_base_url, &fallback_url)
         .resolve(&card.artwork_filename)
         .expect("card snapshots must contain a validated artwork filename");
     let mut artwork_state = use_signal(|| ArtworkLoadState::Primary);
