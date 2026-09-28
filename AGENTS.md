@@ -32,8 +32,8 @@ Catalog changes must preserve unique names and artwork filenames, 84x102 artwork
 dimensions, expanded stat tiers whose low nibble is `0xF`, and typed battle
 classes. RON is the definitive catalog; do not add a parallel CSV record.
 Custom artwork may use any positive integer multiple of 84x102 and must retain
-the same aspect ratio. Each catalog entry explicitly maps to its volume filename;
-artwork lookup must not depend on catalog order.
+the same aspect ratio. Each catalog entry explicitly maps to its deployed
+filename; artwork lookup must not depend on catalog order or hosting provider.
 
 When adding features, keep UI concerns out of game rules. Prefer moving reusable
 rule logic into focused modules before growing `GameSession`.

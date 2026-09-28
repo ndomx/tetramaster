@@ -69,13 +69,28 @@ The catalog is parsed and validated once at startup. Its zero-based order remain
 the runtime definition index, while each entry independently declares the
 snake_case PNG filename used for artwork lookup.
 
-## Deploy The Web App To Railway
+## Deploy The Web App
 
-The production container serves the Dioxus bundle from `/srv`. Custom artwork is
-not included in the image: attach a Railway volume at `/artwork` and upload the
-catalog-declared PNG files to its root. Caddy maps requests such as
-`/cards/goblin.png` to `/artwork/goblin.png`; missing files use the bundled
-fallback image.
+Build the static browser application with:
+
+```sh
+dx build --web --release --bin tetramaster-web
+```
+
+Serve `target/dx/tetramaster-web/release/web/public` over HTTP with any static
+hosting provider or web server. Opening `index.html` directly through `file://`
+is not supported by browser WebAssembly loading.
+
+Production artwork is deliberately separate from the application bundle. Route
+the same-origin `/cards/` URL prefix to a CDN, object store, or static directory
+that contains the catalog-declared filenames. For example,
+`/cards/goblin.png` must return the deployed `goblin.png`. The hosting layer may
+implement that route however it chooses; no provider-specific service is required.
+Missing or unreachable artwork uses the bundled fallback image.
+
+The included Dockerfile and Caddyfile are optional, provider-neutral examples.
+The Caddy example serves the application from `/srv` and reads `/cards/*` from
+`/artwork`; adapt or replace those paths for the chosen hosting environment.
 
 ## Legal notice
 

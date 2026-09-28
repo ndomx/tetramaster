@@ -183,9 +183,10 @@ force until the human explicitly changes them.
 - `CardSnapshot` carries the catalog artwork filename. The web adapter resolves it
   below the stable `/cards` URL prefix. A failed request switches that card to the bundled fallback
   and does not retry the missing source during that component's lifetime.
-- Custom PNGs are ignored by Git and excluded from production bundles. Deployments
-  may serve `/cards` from external storage such as a Railway volume. Developers
-  are responsible for permission to use supplied artwork.
+- Custom PNGs are ignored by Git and excluded from production bundles. The hosting
+  layer serves the stable `/cards` prefix from a CDN, object store, or static
+  directory of its choice. Developers are responsible for permission to use
+  supplied artwork.
 
 ### M2.04.2 Contested Preview Decisions
 
