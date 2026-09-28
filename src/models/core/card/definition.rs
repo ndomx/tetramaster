@@ -2,7 +2,7 @@ use super::CardStats;
 
 #[derive(PartialEq, Eq, Debug)]
 pub struct CardArtwork {
-    pub source_url: String,
+    pub filename: String,
     pub fallback_path: String,
     pub width: u16,
     pub height: u16,
