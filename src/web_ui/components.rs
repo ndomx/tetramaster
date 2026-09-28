@@ -109,6 +109,7 @@ pub(super) fn GameApp(
                     Score { snapshot: snapshot.clone() }
                     div {
                         class: "flex flex-col items-center gap-2",
+                        CompactScore { snapshot: snapshot.clone() }
                         GameStatus { interaction, status, error }
                         Board {
                             snapshot: snapshot.clone(),
@@ -161,12 +162,25 @@ fn Score(snapshot: GameSnapshot) -> Element {
     rsx! {
         section {
             aria_label: "Score",
-            class: "absolute left-[8%] top-1/2 flex -translate-y-1/2 flex-col items-center gap-1 font-serif italic drop-shadow-lg",
+            class: "absolute left-[8%] top-1/2 hidden -translate-y-1/2 flex-col items-center gap-1 font-serif italic drop-shadow-lg md:flex",
             span { class: "text-xs font-black uppercase tracking-widest text-rose-300", "CPU ▲" }
             strong { class: "text-5xl font-black text-rose-300", "{snapshot.cpu_score}" }
             span { class: "my-1 h-px w-10 -rotate-12 bg-amber-200/60" }
             strong { class: "text-5xl font-black text-blue-200", "{snapshot.human_score}" }
             span { class: "text-xs font-black uppercase tracking-widest text-blue-300", "◆ Player" }
+        }
+    }
+}
+
+#[component]
+fn CompactScore(snapshot: GameSnapshot) -> Element {
+    rsx! {
+        section {
+            aria_label: "Score: Player {snapshot.human_score}, CPU {snapshot.cpu_score}",
+            class: "flex items-center gap-2 font-serif text-sm font-black italic drop-shadow-lg md:hidden",
+            span { class: "text-blue-200", "◆ {snapshot.human_score}" }
+            span { class: "h-px w-5 bg-amber-200/60", aria_hidden: "true" }
+            span { class: "text-rose-300", "{snapshot.cpu_score} ▲" }
         }
     }
 }
