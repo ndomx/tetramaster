@@ -33,7 +33,7 @@ pub fn resolve_combat(params: CombatParams<'_>, rng: &mut GameRng) -> CombatReso
 }
 
 fn attack_value(card: &Card, rng: &mut GameRng) -> u8 {
-    let power = boosted_power(card.stats.attack, rng.u8_below(16));
+    let power = boosted_power(attack_stat(card), rng.u8_below(16));
     let penalty = rng.u8_inclusive(power);
 
     power.saturating_sub(penalty)
@@ -49,6 +49,17 @@ fn defense_value(card: &Card, battle_class: BattleClass, rng: &mut GameRng) -> u
 
 fn boosted_power(stat: u8, bonus: u8) -> u8 {
     stat.saturating_add(bonus)
+}
+
+fn attack_stat(card: &Card) -> u8 {
+    match card.stats.battle_class {
+        BattleClass::Assault => card
+            .stats
+            .attack
+            .max(card.stats.phys_defense)
+            .max(card.stats.mag_defense),
+        _ => card.stats.attack,
+    }
 }
 
 fn defense_stat(card: &Card, battle_class: BattleClass) -> u8 {
@@ -80,7 +91,7 @@ fn resolve_with_rolls(
     defense_bonus: u8,
     defense_penalty: u8,
 ) -> CombatOutcome {
-    let attack_power = boosted_power(params.attacker.stats.attack, attack_bonus);
+    let attack_power = boosted_power(attack_stat(params.attacker), attack_bonus);
     let defense_power = boosted_power(
         defense_stat(params.defender, params.attacker.stats.battle_class),
         defense_bonus,
@@ -96,6 +107,44 @@ fn resolve_with_rolls(
 mod tests {
     use super::*;
     use crate::test_support::card;
+
+    #[test]
+    fn assault_uses_the_challengers_highest_stat_and_opponents_lowest_stat() {
+        for (attack, physical, magic) in [(30, 20, 10), (10, 30, 20), (20, 10, 30)] {
+            let attacker = card(1, 0, BattleClass::Assault, attack, physical, magic);
+            assert_eq!(attack_stat(&attacker), 30);
+
+            for (attack, physical, magic) in [(5, 40, 50), (40, 5, 50), (40, 50, 5)] {
+                let defender = card(2, 0, BattleClass::Physical, attack, physical, magic);
+                assert_eq!(defense_stat(&defender, BattleClass::Assault), 5);
+                assert_eq!(
+                    resolve_with_rolls(
+                        CombatParams {
+                            attacker: &attacker,
+                            defender: &defender
+                        },
+                        0,
+                        24,
+                        0,
+                        0,
+                    ),
+                    CombatOutcome::Victory
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn other_classes_use_only_the_challengers_attack_stat() {
+        for class in [
+            BattleClass::Physical,
+            BattleClass::Magic,
+            BattleClass::Flexible,
+        ] {
+            let attacker = card(1, 0, class, 10, 30, 50);
+            assert_eq!(attack_stat(&attacker), 10);
+        }
+    }
 
     #[test]
     fn each_battle_class_selects_the_current_defense_stat() {
